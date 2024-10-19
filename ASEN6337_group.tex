@@ -1,0 +1,49 @@
+%& -job-name=HW_template
+\documentclass[12pt]{scrartcl}
+\input{header.tex}
+\hypersetup{pdftitle={ASEN 6337 Group Project}}
+
+%% --- Title and Authors --- %% 
+\title{Understanding Clouds from Satellite Images \large
+        \\ Group: Why So Cirrus? \\ ASEN 6337 Group Project Report  \\ Fall '24}
+\author[1]{J. Monaco}
+\author[1]{Maggie Zheng}
+\author[1]{Kawther Rouabhi}
+\author[1]{AJ Cuddeback}
+\affil[1]{CU Boulder Smead Aerospace}
+
+
+%  --- Bibliography styling  --- %
+\defaultbibliographystyle{ieeetr}
+\defaultbibliography{biblio}
+
+% --- Header --- %
+\ihead{Last edited \the\year-\the\month-\the\day}
+\chead{ASEN 6337 Group Project} 
+\ohead{Why So Cirrus?}
+
+% --- Starting the Document --- %
+\begin{document}
+\maketitle
+\begin{abstract}
+    \textbf{Abstract}: \textit{A concise (200 words or fewer) summary of the paper.}
+\end{abstract}
+\tableofcontents
+\newpage
+
+% -- Required Sections --- %
+\input{sections/00_intro.tex}
+\include{sections/01_approach}
+\include{sections/02_results}
+\include{sections/03_conclusion}
+
+% --- References --- % 
+\bibliography{biblio.bib}
+\bibliographystyle{ieeetr}
+
+% --- Code and Such --- % 
+\appendix
+\section{Code Used}
+\inputminted{python3}{code/code_ex.py}
+\end{document}
+ 
