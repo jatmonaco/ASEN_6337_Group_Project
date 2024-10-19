@@ -1,6 +1,6 @@
 # All outfiles
 out_files/*
-
+code/understanding_cloud_organization/*
 ## Core latex/pdflatex auxiliary files:
 *.aux
 *.lof
