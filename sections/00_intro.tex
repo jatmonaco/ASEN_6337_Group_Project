@@ -1,4 +1,70 @@
 \section{Introduction}
-This project follows the Kaggle Competition \href{https://www.kaggle.com/competitions/understanding_cloud_organization/overview}{"Understanding Clouds from Satellite Images"}, hosted by the Max Planck Institute for Meteorology in 2019. The stated goal of the competition was to crowd source a way to better identify and label clouds in satellite images. The organizer provided a suite of training images, a \texttt{.csv} of the label masks for each image, and a suite of unlabeled test images \cite{fouhey_2010MachineLearning_2018}. 
+\begin{wrapfigure}{r}{0.4\textwidth}
+    \centering
+    \includegraphics[width=0.95\linewidth]{example-image}
+    \caption{A labeled training image showing all four types of clouds.}
+    \label{fig:all_labels}
+\end{wrapfigure}
+%
+This project follows the Kaggle Competition "\href{https://www.kaggle.com/competitions/understanding_cloud_organization/overview}{Understanding Clouds from Satellite Images}", hosted by the Max Planck Institute for Meteorology in 2019. The stated goal of the competition was to crowd source a way to better identify and label clouds in satellite images. The organizer provided a suite of training images, a \texttt{.csv} of the label masks for each image, and a suite of unlabeled test images. The training images are satellite observations of shallow cumulus clouds in trade wind (ocean) regions. Despite being poorly represented in climate models, these types of clouds are thought to play a significant role in the Earth's radiation balance. The organizers asked the competitors to build a model that could distinguish between four subjective patterns of clouds: \textbf{Sugar, Fish, Flower}, and \textbf{Gravel} \cite{rasp_CombiningCrowdsourcingDeep_2020, maxplanckinstituteformeteorology_UnderstandingCloudsSatellite_}; \cref{fig:all_labels} features a training image where all four classes are present. 
 
-\subsection{Data and Formats}
+Provided by \href{https://worldview.earthdata.nasa.gov/}{NASA Worldview}, the \(2100 \times 1400\) pixel true-color images were acquired by two different polar-orbiting satellites.  A team of scientists selected images of three different oceanic regions, then labeled them via group consensus. Some images feature discontinuities or artifacts related to observations being stitched together from multiple passes \cite{maxplanckinstituteformeteorology_UnderstandingCloudsSatellite_}. 
+%
+\subsection*{Training Images}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.23\linewidth]{example-image}
+    \includegraphics[width=0.23\linewidth]{example-image}
+    \includegraphics[width=0.23\linewidth]{example-image}
+    \includegraphics[width=0.23\linewidth]{example-image}
+    \caption{\textit{From left to right}: Images showing sugar, flower, fish, and gravel labels, respectively.}
+    \label{fig:labeled_imgs}
+\end{figure}
+%
+\begin{wraptable}{r}{0.3\textwidth}
+    \centering
+    \begin{tabular}{@{}c|c@{}}
+    \toprule
+    \begin{tabular}[c]{@{}c@{}}Number of\\ Classes Present\end{tabular} & \begin{tabular}[c]{@{}c@{}}Count of \\ Images\end{tabular} \\ \midrule
+    0                                                                   & 0                                                          \\
+    1                                                                   & XXX                                                        \\
+    2                                                                   & XXX                                                        \\
+    3                                                                   & XXX                                                        \\
+    4                                                                   & XXX                                                       
+    \end{tabular}
+    % \caption{A table showing the number of images containing 0, 1, 2, 3, and all 4 classes. }
+    \label{tab:class_ct}
+\end{wraptable}
+%
+There are 5,546 training images provided, all of which depict clouds over water. Each image has some number of labeled regions of the four types of labels. \Cref{fig:all_labels} shows a rare training image with all types of clouds present, while \cref{fig:labeled_imgs} shows training images with only one class present in each image. 
+
+A given image could contain any number of labeled regions belonging to each class, ranging from images with regions belonging to all four classes, to images with zero labeled regions. A summary of the number of classes per image is shown in \cref{tab:class_ct}.
+
+\subsection*{Label Format}
+The training labels are provided by the file \texttt{train.csv}, with four rows populated for each image. The first column specifies the image and the class, and the second column specifies the list of encoded pixels through run-length encoding (RLE). An example is shown in the table \cref{tab:RLE_ex}.
+%
+\begin{table}[h!]
+    \centering
+    \begin{tabular}{r|l}
+    \multicolumn{1}{c|}{Image\_Label} & \multicolumn{1}{c}{EncodedPixels} \\ \hline
+    \texttt{example\_img.jpg\_Fish}   & \texttt{1 3}        \\ \hline
+    \texttt{example\_img.jpg\_Flower} & \texttt{10 8 22 40} \\ \hline
+    \texttt{example\_img.jpg\_Gravel} &                                      \\ \hline
+    \texttt{example\_img.jpg\_Sugar}  &                                     
+    \end{tabular}
+    \caption{An example how \texttt{example\_img.jpg} is labeled in the provided \texttt{train.csv}. The image has 3 pixels labeled as "Fish" starting at pixel 1, 8 pixels labeled as "Flower" starting at pixel 10, and 40 pixels labeled as "Flower" starting at pixel 22.}
+    \label{tab:RLE_ex}
+\end{table}
+
+The RLE format references the one-indexed raveled pixel locations, starting from top to bottom and left to right. This means that the pixel \(1\) corresponds to the top-left corner, \((1,1)\), pixel \(2\) corresponds to the pixel to below pixel 1 at \((2, 1)\), etc. For each class within an image, the runs are listed in ascending order of the starting pixel. 
+% 
+\subsection*{Unlabeled Images and Evaluation}
+There are 3,698 test images of the same resolution without labels. These test images are unlabeled and are only used to evaluate the classification model using the Dice (\(DSC\)) coefficient: 
+%
+\begin{equation*}
+    DSC = \frac{2 | X \cap Y |}{|X| + |Y|}
+\end{equation*}
+%
+Where \(X\) is the predicted set and \(Y\) is the ground truth. This would be unity for total agreement, and 0 for total disagreement. 
+
+It should be noted that the submitted labels should reference the coordinates of the unlabeled images after they have been down sampled by a factor of four, giving labels to \(350 \times 525\) pixel images. Kaggle allows for late submissions of labels, giving a Dice coefficient for a submitted label list \cite{maxplanckinstituteformeteorology_UnderstandingCloudsSatellite_}. 

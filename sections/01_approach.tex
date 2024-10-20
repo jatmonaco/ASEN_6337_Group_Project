@@ -1,2 +1,15 @@
 \section{Approach and Methodology}
 \textit{This is where you should describe the data analysis approach. Formulate your remote sensing data analysis problem using methods and concepts you learned in the class. }
+
+\subsection{Drawing from Previous Submissions}
+Due to the nature of the platform, the competition's community seem to have been very collaborative and communicative. This means that many top submissions publish their codebase to reproduce their results, and discussion threads detail different approaches and code snippets that are used. We began by implementing (a few?) of the existing solutions to get an idea of the tools that people found useful, to incorporate the helper functions that have already been widely disseminated, and to better understand a diversity of approaches used.  
+
+\subsection{Our First Approach: A Simple Model}
+Our first approach simply used a CNN of a few layers with a few neurons each, trained on much of the training data, and validated on the rest of the training data. 
+
+\subsection{Other Ideas Considered}
+Additional ideas include: 
+\begin{itemize}
+    \item Creating additional synthetic training images by applying different combinations of affine transformations on the supplied training images (rotating, mirroring, stretching, wrapping). 
+    \item Creating a dedicated model to create labels for each class (4 models total).
+\end{itemize}
