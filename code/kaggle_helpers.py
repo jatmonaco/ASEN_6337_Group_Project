@@ -4,7 +4,7 @@ Helper functions for the project
 
 Created on Fri Oct 25 13:45:35 2024
 
-@author: janem
+@author: J. Monaco
 """
 
 # %% Imports

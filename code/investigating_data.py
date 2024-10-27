@@ -92,7 +92,7 @@ savefig('../figs/single_labels.png', bbox_inches='tight', dpi=400)
 # %%  Plotting image with all four labels
 
 
-fig, ax = plt.subplots(1, 1, figsize=(3, 3.5), layout='constrained')
+fig, ax = plt.subplots(1, 1, figsize=(3, 3), layout='constrained')
 
 all_label_img = training_df[training_df.num_labels == len(class_names)].iloc[0]
 img_name = all_label_img.im_id
