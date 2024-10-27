@@ -11,7 +11,10 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 import matplotlib.pyplot as plt
-import seaborn as sns
+import kaggle_helpers as KH
+from matplotlib.pyplot import savefig
+from skimage import measure
+
 
 # %% Getting data
 path = './understanding_cloud_organization'
@@ -24,38 +27,90 @@ print(f'{N_labeled} training images and {N_test} test images available')
 
 # %% Getting label_keys
 label_keys = pd.read_csv(f'{path}/train.csv')
-class_names = label_keys.loc[label_keys['EncodedPixels'].isnull() == False, 'Image_Label'].apply(lambda x: x.split('_')[1]).unique()
+label_keys['label'] = label_keys['Image_Label'].apply(lambda x: x.split('_')[1])
+label_keys['im_id'] = label_keys['Image_Label'].apply(lambda x: x.split('_')[0])
+class_names = label_keys['label'].unique()   # Name of all labels
 
 # Counts of each label
-label_totals = label_keys.loc[label_keys['EncodedPixels'].isnull() == False, 'Image_Label'].apply(lambda x: x.split('_')[1]).value_counts()
+class_totals = label_keys.loc[label_keys['EncodedPixels'].isnull() == False, 'Image_Label'].apply(lambda x: x.split('_')[1]).value_counts()
+print('Class occurences: ', class_totals, '\n')
 
 # Counts of number of label_keys per image
 img_label_freq = label_keys.loc[label_keys['EncodedPixels'].isnull() == False, 'Image_Label'].apply(lambda x: x.split('_')[0]).value_counts().value_counts()
+print('Class occurences within images: ', img_label_freq)
 
-# %% Grabbing images with just one label
-imgs_1label = label_keys.loc[label_keys['EncodedPixels'].isnull() == False, 'Image_Label'].apply(lambda x: x.split('_')).value_counts()
-imgs_1label = imgs_1label[imgs_1label == 1].index
+# %% Putting the training data in better pandas format
+'''
+Each picutre is only represented by 1 row, with columns: 
+        * 'im_id': the name of the image 
+        * 'Flower', 'Gravel', 'Sugar', 'Fish': The rle label for that row's image
+        * num_labels: the number of valid labels 
+'''
+training_cols = ['im_id', *class_names, 'num_labels']
+training_df = pd.DataFrame(columns=training_cols)
+training_df['im_id'] = label_keys['im_id'].unique()
+for idx, row in training_df.iterrows():
+    img_df = label_keys[label_keys.im_id == row.im_id]
+    row['num_labels'] = 0
+    for class_name in class_names:
+        rle = img_df[img_df.label == class_name].EncodedPixels.dropna().to_numpy()
+        if rle.size < 1:
+            continue
+        rle = np.fromstring(rle[0], sep=' ', dtype=int)
+        row[f'{class_name}'] = rle
+        row['num_labels'] += 1
+    training_df.iloc[idx] = row
 
-# %%
-imgs_label = np.array([label[1] for label in imgs_1label])  # the label_keys for the singlely labeled images
-img_names = [label[0] for label in imgs_1label]             # the names of each singlely labeled images
 
-# Names of images of each single label
-single_img_names = []
-for label in class_names:
-    single_img = img_names[np.argwhere(imgs_label == label).flatten()[0]]
-    single_img_names.append(single_img)
+# %%  Plotting single images
+single_label_imgs = training_df[training_df.num_labels == 1]
 
-# Plotting the single images
-fig, axs = plt.subplots(1, len(class_names), figsize=(7.5, 3), layout='constrained')
-for label, img_name, ax in zip(class_names, single_img_names, axs.flatten()):
+fig, axs = plt.subplots(1, len(class_names), figsize=(7.5, 2), layout='constrained')
+colors = ['c', 'm', 'y', 'g']
+for class_name, ax, color in zip(class_names, axs.flatten(), colors):
     # Getting img
+    single_label_img = single_label_imgs[~single_label_imgs[f'{class_name}'].isna()].iloc[0]
+    img_name = single_label_img.im_id
     img = Image.open(f'{path}/train_images/{img_name}')
     ax.imshow(img)
+
+    # Getting mask
+    mask_rle = single_label_img[f'{class_name}']
+    mask_img = KH.rle_decode(mask_rle)
+    ax.contour(mask_img, colors=color)
+    ax.imshow(mask_img, alpha=mask_img * 0.5, cmap='gray')
 
     # Formatting
     ax.set_yticklabels([])
     ax.set_xticklabels([])
     ax.set_xticks([])
     ax.set_yticks([])
-    ax.set_title(f'{img_name}\n{label}')
+    ax.set_title(f'{img_name}\n{class_name}')
+fig.suptitle('Singly-Labeled Images and Their Masks')
+savefig('../figs/single_labels.png', bbox_inches='tight', dpi=400)
+
+# %%  Plotting image with all four labels
+
+
+fig, ax = plt.subplots(1, 1, figsize=(3, 3.5), layout='constrained')
+
+all_label_img = training_df[training_df.num_labels == len(class_names)].iloc[0]
+img_name = all_label_img.im_id
+img = Image.open(f'{path}/train_images/{img_name}')
+ax.imshow(img)
+
+# Getting mask
+colors = ['c', 'm', 'y', 'g']
+for class_name, color in zip(class_names, colors):
+    mask_rle = all_label_img[f'{class_name}']
+    mask_img = KH.rle_decode(mask_rle)
+    ax.contour(mask_img, colors=color)
+    ax.imshow(mask_img, alpha=mask_img * 0.25, cmap='gray')
+
+# Formatting
+ax.set_yticklabels([])
+ax.set_xticklabels([])
+ax.set_xticks([])
+ax.set_yticks([])
+ax.set_title(f'Image with All Classes\n{img_name}')
+savefig('../figs/all_labels.png', bbox_inches='tight', dpi=400)

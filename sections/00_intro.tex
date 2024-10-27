@@ -1,7 +1,7 @@
 \section{Introduction}
 \begin{wrapfigure}{r}{0.4\textwidth}
     \centering
-    \includegraphics[width=0.95\linewidth]{example-image}
+    \includegraphics[width=3in]{figs/all_labels.png}
     \caption{A labeled training image showing all four types of clouds.}
     \label{fig:all_labels}
 \end{wrapfigure}
@@ -13,28 +13,33 @@ Provided by \href{https://worldview.earthdata.nasa.gov/}{NASA Worldview}, the \(
 \subsection*{Training Images}
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.23\linewidth]{example-image}
-    \includegraphics[width=0.23\linewidth]{example-image}
-    \includegraphics[width=0.23\linewidth]{example-image}
-    \includegraphics[width=0.23\linewidth]{example-image}
+    \includegraphics[width=\linewidth]{figs/single_labels.png}
     \caption{\textit{From left to right}: Images showing sugar, flower, fish, and gravel labels, respectively.}
     \label{fig:labeled_imgs}
 \end{figure}
 %
-\begin{wraptable}{r}{0.3\textwidth}
+\begin{table}
     \centering
+    \begin{tabular}{c|c}
+    \hline
+    Class  & Class Count \\ \hline
+    Sugar  & 3,751       \\
+    Gravel & 2,939       \\
+    Fish   & 2,781       \\
+    Flower & 2,365      
+    \end{tabular}
+    \quad
     \begin{tabular}{@{}c|c@{}}
     \toprule
     \begin{tabular}[c]{@{}c@{}}Number of\\ Classes Present\end{tabular} & \begin{tabular}[c]{@{}c@{}}Count of \\ Images\end{tabular} \\ \midrule
-    0                                                                   & 0                                                          \\
-    1                                                                   & XXX                                                        \\
-    2                                                                   & XXX                                                        \\
-    3                                                                   & XXX                                                        \\
-    4                                                                   & XXX                                                       
+    1                                                                   & 1,348                                                        \\
+    2                                                                   & 2,372                                                        \\
+    3                                                                   & 1,348                                                        \\
+    4                                                                   & 266                                                       
     \end{tabular}
-    % \caption{A table showing the number of images containing 0, 1, 2, 3, and all 4 classes. }
+    \caption{\textit{Left}: A table showing the number of labels available for each class in the training set. \textit{Right}: A table showing the number of images containing 1, 2, 3, and all 4 classes. }
     \label{tab:class_ct}
-\end{wraptable}
+\end{table}
 %
 There are 5,546 training images provided, all of which depict clouds over water. Each image has some number of labeled regions of the four types of labels. \Cref{fig:all_labels} shows a rare training image with all types of clouds present, while \cref{fig:labeled_imgs} shows training images with only one class present in each image. 
 
