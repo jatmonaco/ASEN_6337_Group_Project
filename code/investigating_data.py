@@ -14,7 +14,9 @@ import matplotlib.pyplot as plt
 import kaggle_helpers as KH
 from matplotlib.pyplot import savefig
 from skimage import measure
-
+plt.rcParams['text.usetex'] = True
+plt.rcParams['font.family'] = 'serif'
+plt.rcParams['font.serif'] = 'cm'
 
 # %% Getting data
 path = './understanding_cloud_organization'
@@ -87,7 +89,7 @@ for class_name, ax, color in zip(class_names, axs.flatten(), colors):
     ax.set_yticks([])
     ax.set_title(f'{img_name}\n{class_name}')
 fig.suptitle('Singly-Labeled Images and Their Masks')
-savefig('../figs/single_labels.png', bbox_inches='tight', dpi=400)
+savefig('../figs/single_labels.pdf', bbox_inches='tight', dpi=400)
 
 # %%  Plotting image with all four labels
 
@@ -113,4 +115,4 @@ ax.set_xticklabels([])
 ax.set_xticks([])
 ax.set_yticks([])
 ax.set_title(f'Image with All Classes\n{img_name}')
-savefig('../figs/all_labels.png', bbox_inches='tight', dpi=400)
+savefig('../figs/all_labels.pdf', bbox_inches='tight', dpi=400)
