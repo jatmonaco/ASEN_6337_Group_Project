@@ -10,6 +10,16 @@ Created on Fri Oct 25 13:45:35 2024
 # %% Imports
 import numpy as np
 
+# %% Matrix helpers
+
+
+def norm_matrix(A: np.array) -> np.array:
+    '''
+    Take a matrix and normalize values between 0 and 1
+    '''
+    A = np.array(A)
+    return (A - A.min()) / A.ptp()
+
 # %% Mask helpers
 
 

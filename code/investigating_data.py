@@ -13,7 +13,6 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import kaggle_helpers as KH
 from matplotlib.pyplot import savefig
-from skimage import measure
 plt.rcParams['text.usetex'] = True
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = 'cm'
@@ -63,7 +62,8 @@ for idx, row in training_df.iterrows():
         row['num_labels'] += 1
     training_df.iloc[idx] = row
 
-
+# Saving this as a .csv
+training_df.to_csv('better_df')
 # %%  Plotting single images
 single_label_imgs = training_df[training_df.num_labels == 1]
 

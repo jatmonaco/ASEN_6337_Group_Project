@@ -4,9 +4,10 @@
 \subsection{Drawing from Previous Submissions}
 Due to the nature of the platform, the competition's community seem to have been very collaborative and communicative. This means that many top submissions publish their codebase to reproduce their results, and discussion threads detail different approaches and code snippets that are used. We began by implementing (a few?) of the existing solutions to get an idea of the tools that people found useful, to incorporate the helper functions that have already been widely disseminated, and to better understand a diversity of approaches used.  
 
-\subsection{Our First Approach: A Simple Model}
-Our first approach simply used a CNN of a few layers with a few neurons each, trained on much of the training data, and validated on the rest of the training data. 
-
+\subsection{Our First Approach: Divide and Concur}
+As a first step towards a solution, and because of the overlapping nature of the labels, we decided to start off by creating a different classifier for each class; i.e., a sugar classifier, a gravel classifier, a flower classifier, and a fish classifier. Each member of the team was assigned a class and created a classifier on their own using \texttt{pytorch} as the neural network tool set. This allowed us to get to know these new tools and data, come up with ideas on our own, and reconvene afterwards to see if there was any convergent thinking or useful tips before synthesizing a more general model. 
+%
+\input{sections/01a_JM.tex}
 \subsection{Other Ideas Considered}
 Additional ideas include: 
 \begin{itemize}

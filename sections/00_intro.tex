@@ -6,10 +6,13 @@
     \label{fig:all_labels}
 \end{wrapfigure}
 %
-This project follows the Kaggle Competition "\href{https://www.kaggle.com/competitions/understanding_cloud_organization/overview}{Understanding Clouds from Satellite Images}", hosted by the Max Planck Institute for Meteorology in 2019. The stated goal of the competition was to crowd source a way to better identify and label clouds in satellite images. The organizer provided a suite of training images, a \texttt{.csv} of the label masks for each image, and a suite of unlabeled test images. The training images are satellite observations of shallow cumulus clouds in trade wind (ocean) regions. Despite being poorly represented in climate models, these types of clouds are thought to play a significant role in the Earth's radiation balance. The organizers asked the competitors to build a model that could distinguish between four subjective patterns of clouds: \textbf{Sugar, Fish, Flower}, and \textbf{Gravel} \cite{rasp_CombiningCrowdsourcingDeep_2020, maxplanckinstituteformeteorology_UnderstandingCloudsSatellite_}; \cref{fig:all_labels} features a training image where all four classes are present. 
+This project follows the Kaggle Competition "\href{https://www.kaggle.com/competitions/understanding_cloud_organization/overview}{Understanding Clouds from Satellite Images}", hosted by the Max Planck Institute for Meteorology in 2019. The stated goal of the competition was to crowd source a way to better identify and label clouds in satellite images. The organizer provided a suite of training images, a \texttt{.csv} of the masks for each class in each image, and a suite of unlabeled test images. 
+Provided by \href{https://worldview.earthdata.nasa.gov/}{NASA Worldview}, the \(2100 \times 1400\) pixel true-color images were acquired by two different polar-orbiting satellites, depicting shallow cumulus clouds in trade wind (ocean) regions. Despite being poorly represented in climate models, these types of clouds are thought to play a significant role in the Earth's radiation balance.
 
-Provided by \href{https://worldview.earthdata.nasa.gov/}{NASA Worldview}, the \(2100 \times 1400\) pixel true-color images were acquired by two different polar-orbiting satellites.  A team of scientists selected images of three different oceanic regions, then labeled them via group consensus. Some images feature discontinuities or artifacts related to observations being stitched together from multiple passes \cite{maxplanckinstituteformeteorology_UnderstandingCloudsSatellite_}. 
-%
+The organizers asked the competitors to build a model that could distinguish between four subjective patterns of clouds: \textbf{Sugar, Fish, Flower}, and \textbf{Gravel} \cite{rasp_CombiningCrowdsourcingDeep_2020, maxplanckinstituteformeteorology_UnderstandingCloudsSatellite_}; \cref{fig:all_labels} features a training image where all four classes are present. A team of scientists selected images of three different oceanic regions, then labeled them via group consensus. Some images feature discontinuities or artifacts related to observations being stitched together from multiple passes \cite{maxplanckinstituteformeteorology_UnderstandingCloudsSatellite_}.
+
+Each team competing used the labeled training images to create some classification model with the ability to classify regions in new images, outputting creates a similar label map to the training labels provided. Each team is evaluated by applying their model to the test images and submitting a down-scaled label map to the Kaggle portal, at which point a DICE score is calculated as a proxy for performance (see \cref{eval}). The organizers reward the models with the best DICE score as the winner. 
+
 \subsection*{Training Images}
 \begin{figure}[htbp]
     \centering
@@ -63,7 +66,7 @@ The training labels are provided by the file \texttt{train.csv}, with four rows 
 
 The RLE format references the one-indexed raveled pixel locations, starting from top to bottom and left to right. This means that the pixel \(1\) corresponds to the top-left corner, \((1,1)\), pixel \(2\) corresponds to the pixel to below pixel 1 at \((2, 1)\), etc. For each class within an image, the runs are listed in ascending order of the starting pixel. 
 % 
-\subsection*{Unlabeled Images and Evaluation}
+\subsection*{Unlabeled Images and Evaluation} \label{eval}
 There are 3,698 test images of the same resolution without labels. These test images are unlabeled and are only used to evaluate the classification model using the Dice (\(DSC\)) coefficient: 
 %
 \begin{equation*}

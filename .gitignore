@@ -1,6 +1,8 @@
 # All outfiles
 out_files/*
 code/understanding_cloud_organization/*
+code/hw3_data/*
+
 ## Core latex/pdflatex auxiliary files:
 *.aux
 *.lof
