@@ -31,7 +31,7 @@ plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = 'cm'
 import seaborn as sns
 
-# %% Reading the truth data
+# %% Getting data
 data_dir = './hw3_data'       # Parent directory that holds all data
 X_truth = np.loadtxt(f'{data_dir}/Labeled_SDO_Data_for_Hw3_2024.csv',
                      delimiter=',', skiprows=0)

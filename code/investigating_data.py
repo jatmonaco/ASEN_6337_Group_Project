@@ -57,13 +57,27 @@ for idx, row in training_df.iterrows():
         rle = img_df[img_df.label == class_name].EncodedPixels.dropna().to_numpy()
         if rle.size < 1:
             continue
-        rle = np.fromstring(rle[0], sep=' ', dtype=int)
+        rle_str = rle[0]
+        rle = np.fromstring(rle_str, sep=' ', dtype=int)
         row[f'{class_name}'] = rle
         row['num_labels'] += 1
     training_df.iloc[idx] = row
 
-# Saving this as a .csv
-training_df.to_csv('better_df')
+# %% Saving this as a .csv
+write_csv = training_df.copy()
+
+
+def arr2str(arr):
+    if not np.isnan(arr).any():
+        string = " ".join(map(str, arr))
+    else:
+        string = np.nan
+    return string
+
+
+for label in class_names:
+    write_csv[label] = write_csv[label].apply(lambda x: arr2str(x))
+write_csv.to_csv('better_df.csv', index=False)
 # %%  Plotting single images
 single_label_imgs = training_df[training_df.num_labels == 1]
 
