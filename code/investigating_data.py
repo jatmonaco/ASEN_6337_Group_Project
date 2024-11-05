@@ -68,6 +68,9 @@ write_csv = training_df.copy()
 
 
 def arr2str(arr):
+    '''
+    Formatter to save the RLE mask arrays as strings
+    '''
     if not np.isnan(arr).any():
         string = " ".join(map(str, arr))
     else:
