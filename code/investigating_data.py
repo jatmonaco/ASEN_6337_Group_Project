@@ -27,7 +27,7 @@ N_test = len(os.listdir(f'{path}/test_images'))
 print(f'{N_labeled} training images and {N_test} test images available')
 
 # %% Getting label_keys
-label_keys = pd.read_csv(f'{path}/train.csv')
+label_keys = pd.read_csv(f'{path}/train.csv', index_col=False)
 label_keys['label'] = label_keys['Image_Label'].apply(lambda x: x.split('_')[1])
 label_keys['im_id'] = label_keys['Image_Label'].apply(lambda x: x.split('_')[0])
 class_names = label_keys['label'].unique()   # Name of all labels
@@ -95,7 +95,7 @@ for class_name, ax, color in zip(class_names, axs.flatten(), colors):
 
     # Getting mask
     mask_rle = single_label_img[f'{class_name}']
-    mask_img = KH.rle_decode(mask_rle)
+    mask_img = KH.rle2mask(mask_rle)
     ax.contour(mask_img, colors=color)
     ax.imshow(mask_img, alpha=mask_img * 0.5, cmap='gray')
 
@@ -122,7 +122,7 @@ ax.imshow(img)
 colors = ['c', 'm', 'y', 'g']
 for class_name, color in zip(class_names, colors):
     mask_rle = all_label_img[f'{class_name}']
-    mask_img = KH.rle_decode(mask_rle)
+    mask_img = KH.rle2mask(mask_rle)
     ax.contour(mask_img, colors=color)
     ax.imshow(mask_img, alpha=mask_img * 0.25, cmap='gray')
 
