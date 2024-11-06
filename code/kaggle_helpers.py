@@ -32,6 +32,8 @@ class CloudDataset(Dataset):
     A pytorch dataloader for the cloud dataset. 
     Based on the function of the same name found here: 
         https://www.kaggle.com/code/dhananjay3/image-segmentation-from-scratch-in-pytorch#Helper-functions
+
+    Returns unnormalized (0-255) 2D arrays of images and masks 
     '''
 
     def __init__(

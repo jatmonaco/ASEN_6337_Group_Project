@@ -21,6 +21,7 @@ import kaggle_helpers as kh
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+import torch.nn.functional as F
 
 # system tools
 import os
@@ -62,7 +63,7 @@ valid_keys = label_keys.loc[~label_keys.index.isin(training_keys.index)]
 
 
 # --- Setting up training data --- #
-batch_sz = 32                                        # How many images to consider per batch
+batch_sz = 8                                        # How many images to consider per batch
 train_dataset = kh.CloudDataset(training_keys, datatype='train')
 train_loader = DataLoader(train_dataset,
                           batch_size=batch_sz,
@@ -80,48 +81,52 @@ print('Creating NN model...')
 
 class CloudClassr(nn.Module):
     '''
-    NN structure for cloud classification. 
-
-    Input layer should have 3x as many inputs as there are pixels, as there are 3 data channels 
-
-    Output layer should have 1x as many outputs as there are pixels, as it's just a mask
+    Kawther's model
     '''
 
-    def __init__(self, N_px, layer_size):
+    def __init__(self):
         super(CloudClassr, self).__init__()
-        self.linear_ReLU_stack = nn.Sequential(
-            nn.Linear(in_features=3 * N_px, out_features=layer_size),
-            nn.ReLU(),
-            nn.Linear(in_features=layer_size, out_features=layer_size),
-            nn.ReLU(),
-            nn.Linear(in_features=layer_size, out_features=layer_size),
-            nn.ReLU(),
-            nn.Linear(in_features=layer_size, out_features=N_px),
-        )
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # Whole flattened images as input
-        x = x.flatten(start_dim=1, end_dim=-1)
+        # Encoder: Downsampling with convolutions and max-pooling
+        self.enc1 = nn.Conv2d(3, 16, kernel_size=3, padding=1)
+        self.enc2 = nn.Conv2d(16, 32, kernel_size=3, padding=1)
+        self.enc3 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
 
-        # Run through NN
-        x_logits = self.linear_ReLU_stack(x)
+        # Decoder: Upsampling with transposed convolutions
+        self.up1 = nn.ConvTranspose2d(64, 32, kernel_size=2, stride=2)
+        self.up2 = nn.ConvTranspose2d(32, 16, kernel_size=2, stride=2)
+        self.final_conv = nn.Conv2d(16, 1, kernel_size=1)  # Output layer for binary mask
 
-        # turn logits -> pred probs -> pred labels
-        x_pred = torch.round(torch.sigmoid(x_logits))
-        return x_pred.squeeze()
+    def forward(self, x):
+        # Encoding (Downsampling)
+        x1 = F.relu(self.enc1(x))
+        x2 = F.max_pool2d(x1, 2)  # Down to 700x1050
+        x2 = F.relu(self.enc2(x2))
+        x3 = F.max_pool2d(x2, 2)  # Down to 350x525
+        x3 = F.relu(self.enc3(x3))
+
+        # Decoding (Upsampling)
+        x = self.up1(x3)          # Up to 700x1050
+        x = F.relu(x + x2)        # Skip connection from encoder
+        x = self.up2(x)           # Up to 1400x2100
+        x = F.relu(x + x1)        # Skip connection from encoder
+
+        # Final 1x1 convolution to get binary segmentation output
+        x = torch.sigmoid(self.final_conv(x))
+        return x.squeeze()
 
 
 # Device for data and model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Creating an instance of the model on the target device
-model = CloudClassr(N_px, 8)
+model = CloudClassr()
 model.to(device)
 
 # %% Training the model
 # criterion = nn.CrossEntropyLoss()                             # Loss function for multiclass data
 criterion = nn.BCELoss()                                        # Loss function for binary class data
-optimizer = torch.optim.Adam(model.parameters(), lr=1e0)   # Gradient optimizer
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)   # Gradient optimizer
 # optimizer = torch.optim.SGD(params=model.parameters(),
 #                             lr=0.1)
 epochs = 5                                                 # Number of training epochs
@@ -138,12 +143,11 @@ for epoch in tqdm.trange(epochs, desc='Epochs: '):
         model.train()   # Setting model to training mode
 
         # Forward pass: Predicting the labels on the training data
-        X_train = torch.Tensor(data).float().to(device)
+        X_train = torch.Tensor(data).float().permute(0, 3, 1, 2).to(device)
         X_pred = model(X_train)
 
         # Calculate loss for this batch
         X_truth = torch.Tensor(target).float().to(device)
-        X_truth = X_truth.flatten(1, -1)
         loss = criterion(X_pred, X_truth)
         train_loss += loss
 
@@ -155,37 +159,41 @@ for epoch in tqdm.trange(epochs, desc='Epochs: '):
 
         # gradient descent)
         optimizer.step()
-        print(f'Training loss: {loss:.3f}')
-        # data_iter.set_postfix({"Training Loss": loss.item()})
+        # print(f'Training loss: {loss:.3f}')
+        data_iter.set_postfix({"Training Loss": loss.item()})
     train_loss /= len(train_loader)
 
-# %% Evaluating model
-model.eval()
-test_loss, test_acc = 0, 0
-with torch.inference_mode():
-    data_iter = tqdm.tqdm(valid_loader, desc='    Valid. Batch: ',
-                          postfix={"Pct. Accuracy": 0})
-    for data, target in data_iter:
-        # Forward pass
-        X_test = torch.Tensor(data).float().to(device)
-        test_pred = model(X_test)
+    # --- Evaluating model --- #
+    model.eval()
+    test_loss, test_acc = 0, 0
+    with torch.inference_mode():
+        data_iter = tqdm.tqdm(valid_loader, desc='    Valid. Batch: ',
+                              postfix={"Pct. Accuracy": 0})
+        for data, target in data_iter:
+            # Forward pass
+            X_test = torch.Tensor(data).float().to(device)
+            test_pred = model(X_test)
 
-        # Calculate loss (accumulatively)
-        test_truth = torch.Tensor(target).float().to(device)
-        test_truth = test_truth.flatten(1, -1)
-        test_loss += criterion(test_pred, test_truth)
+            # Calculate loss (accumulatively)
+            test_truth = torch.Tensor(target).float().to(device)
+            test_truth = test_truth.flatten(1, -1)
+            test_loss += criterion(test_pred, test_truth)
 
-        # Calculate accuracy
-        correct = torch.eq(test_truth, test_pred).sum().item()
-        acc = (correct / len(test_pred) / N_px) * 100
-        test_acc += acc
-        data_iter.set_postfix({"Pct. Accuracy": acc})
+            # Calculate accuracy
+            correct = torch.eq(test_truth, test_pred).sum().item()
+            acc = (correct / len(test_pred) / N_px) * 100
+            test_acc += acc
+            data_iter.set_postfix({"Pct. Accuracy": acc})
 
-    # Calculate the test loss average per batch
-    test_loss /= len(valid_loader)
+        # Calculate the test loss average per batch
+        test_loss /= len(valid_loader)
 
-    # Calculate the test acc average per batch
-    test_acc /= len(valid_loader)
-print(f'For epoch {epoch}, there was an average training loss per batch of \
-{train_loss:.2f}, average test loss of {test_loss:.2f}, and accuracy of \
-{test_acc:.1f}%')
+        # Calculate the test acc average per batch
+        test_acc /= len(valid_loader)
+    print(f'For epoch {epoch}, there was an average training loss per batch of \
+    {train_loss:.2f}, average test loss of {test_loss:.2f}, and accuracy of \
+    {test_acc:.1f}%')
+
+# %% Saving the model
+torch.save(obj=model.state_dict(),
+           f='cloudClassr_v1')
