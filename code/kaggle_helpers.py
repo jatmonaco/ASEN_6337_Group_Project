@@ -14,7 +14,7 @@ import os
 from torch.utils.data import Dataset
 import pandas as pd
 from sklearn.decomposition import PCA
-
+from skimage.transform import resize
 
 # %% Matrix helpers
 
@@ -27,6 +27,21 @@ def norm_matrix(A: np.array) -> np.array:
     return (A - A.min()) / A.ptp()
 
 # %% Helping with data
+
+
+def mask2rle(img):
+    '''
+    Convert mask to rle.
+    img: numpy array, 1 - mask, 0 - background
+    Returns run length as string formated
+
+    Taken from: https://www.kaggle.com/code/artgor/segmentation-in-pytorch-using-convenient-tools#Helper-functions-and-classes
+    '''
+    pixels = img.T.flatten()
+    pixels = np.concatenate([[0], pixels, [0]])
+    runs = np.where(pixels[1:] != pixels[:-1])[0] + 1
+    runs[1::2] -= runs[::2]
+    return ' '.join(str(x) for x in runs)
 
 
 def DICE_score(img1, img2):
@@ -139,7 +154,117 @@ class CloudDataset_PCA(Dataset):
         masks = []
         for label in self.labels:
             rle = img_df[f'{label}']
-            mask = rle2mask(rle)
+            mask = rle2mask(rle, shape=(ht, wd))
+            masks.append(mask)
+        return img_PCA, np.array(masks)
+
+    def __len__(self):
+        return len(self.df)
+
+
+class CloudDataset(Dataset):
+    '''
+    A pytorch dataloader for the cloud dataset. 
+    Based on the function of the same name found here: 
+        https://www.kaggle.com/code/dhananjay3/image-segmentation-from-scratch-in-pytorch#Helper-functions
+
+    Returns normalized, single-channel 2D array of PCA'd image, and unmodified mask
+    '''
+
+    def __init__(
+        self,
+        df: pd.DataFrame = None,
+        img_path: str = './understanding_cloud_organization/train_images'
+    ):
+        self.df = df
+        self.labels = ['Sugar', 'Flower', 'Gravel', 'Fish']
+        self.data_folder = img_path
+        self.labels = ['Sugar', 'Flower', 'Gravel', 'Fish']
+
+    def __getitem__(self, idx):
+        img_df = self.df.iloc[idx]
+
+        # Getting image
+        image_name = img_df.im_id
+        image_path = os.path.join(self.data_folder, image_name)
+        img = cv2.imread(image_path)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = img[:, :, 0]
+
+        # Getting mask of this label
+        masks = []
+        for label in self.labels:
+            rle = img_df[f'{label}']
+            mask = rle2mask(rle, shape=(ht, wd))
+            masks.append(mask)
+        return img_PCA, np.array(masks)
+
+    def __len__(self):
+        return len(self.df)
+
+
+class CloudDataset_PCA_scaled(Dataset):
+    '''
+    A pytorch dataloader for the cloud dataset that downscales the image and 
+    mask by a factor 
+
+    Based on the function of the same name found here: 
+        https://www.kaggle.com/code/dhananjay3/image-segmentation-from-scratch-in-pytorch#Helper-functions
+
+    Returns normalized, single-channel 2D array of PCA'd image, and unmodified mask
+    '''
+
+    def __init__(
+        self,
+        df: pd.DataFrame = None,
+        datatype: str = "train",
+        downscale_factor: int = 2,
+        img_paths: str = './understanding_cloud_organization'
+    ):
+        self.df = df
+        self.labels = ['Sugar', 'Flower', 'Gravel', 'Fish']
+        self.dscale = int(downscale_factor)
+
+        if datatype != "test":
+            self.data_folder = f"{img_paths}/train_images"
+        else:
+            self.data_folder = f"{img_paths}/test_images"
+        self.labels = ['Sugar', 'Flower', 'Gravel', 'Fish']
+
+    def __getitem__(self, idx):
+        img_df = self.df.iloc[idx]
+
+        # Getting image
+        image_name = img_df.im_id
+        image_path = os.path.join(self.data_folder, image_name)
+        img = cv2.imread(image_path)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+        # PCA data reduction
+        ht, wd, n_clrs = img.shape
+        X = img.reshape(-1, n_clrs)
+        pca = PCA(n_components=1)
+        pca.fit(X)
+        img_PCA = pca.fit_transform(X)
+        img_PCA = np.reshape(img_PCA, (ht, wd, 1))
+        img_PCA = norm_matrix(img_PCA)
+
+        # Downscaling the image and making sure it fits the conv. kernels
+        ht_scaled = ht // self.dscale
+        ht_scaled += 4 - (ht_scaled % 4)
+        wd_scaled = wd // self.dscale
+        wd_scaled += 4 - (wd_scaled % 4)
+        img_PCA = resize(img_PCA,
+                         (ht_scaled, wd_scaled, 1))
+
+        # Getting mask of this label
+        masks = []
+        for label in self.labels:
+            rle = img_df[f'{label}']
+            mask = rle2mask(rle, shape=(ht, wd))
+            mask = resize(mask,
+                          (ht_scaled, wd_scaled))
+            mask = np.round(mask)
             masks.append(mask)
         return img_PCA, np.array(masks)
 

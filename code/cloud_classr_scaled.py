@@ -1,14 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Trying out pytorch to create a basic NN for classifying images.
-
-This is largely based on the following resources:
-    * https://www.kaggle.com/code/artgor/segmentation-in-pytorch-using-convenient-tools
-    * https://github.com/mrdbourke/pytorch-deep-learning/blob/main/video_notebooks/03_pytorch_computer_vision_video.ipynb
-
-Other useful resources include: 
-    * https://www.youtube.com/watch?v=V_xro1bcAuA
-
+Downsampling images and training NN. Based on cloud_classr.py
 
 Created on Mon Nov  4 12:07:36 2024
 
@@ -61,16 +53,18 @@ print(f'Using {frac_training * 100:.0f}% of data for training...')
 
 # --- Setting up training data --- #
 batch_sz = 8                                        # How many images to consider per batch
-train_dataset = kh.CloudDataset_PCA(training_keys,
-                                    datatype='train')
+train_dataset = kh.CloudDataset_PCA_scaled(training_keys,
+                                           downscale_factor=2,
+                                           datatype='train')
 train_loader = DataLoader(train_dataset,
                           batch_size=batch_sz,
                           shuffle=True)
 print(f'Training data divided in to {len(train_loader)} batches of {batch_sz} images each.')
 
 # --- Setting up validation data --- #
-valid_dataset = kh.CloudDataset_PCA(valid_keys,
-                                    datatype='train')
+valid_dataset = kh.CloudDataset_PCA_scaled(valid_keys,
+                                           downscale_factor=2,
+                                           datatype='train')
 valid_loader = DataLoader(valid_dataset,
                           batch_size=batch_sz)
 
@@ -99,9 +93,9 @@ class CloudClassr(nn.Module):
     def forward(self, x):
         # Encoding (Downsampling)
         x1 = F.relu(self.enc1(x))
-        x2 = F.max_pool2d(x1, 2)  # Down to 700x1050
+        x2 = F.max_pool2d(x1, 2)  # Down by factor of 2
         x2 = F.relu(self.enc2(x2))
-        x3 = F.max_pool2d(x2, 2)  # Down to 350x525
+        x3 = F.max_pool2d(x2, 2)  # Down by factor of 2
         x3 = F.relu(self.enc3(x3))
 
         # Decoding (Upsampling)
@@ -117,7 +111,7 @@ class CloudClassr(nn.Module):
 
 # Device for data and model
 # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = 'cpu'
 
 # Creating an instance of the model on the target device
 model = CloudClassr()
@@ -133,7 +127,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)   # Gradient optimizer
 #                             lr=0.1)
 
 # --- Training --- #
-epochs = 12              # Number of training epochs
+epochs = 24              # Number of training epochs
 print(f'Training NN with {epochs} epochs...')
 
 # Losses and accuracies to plot for each epoch
