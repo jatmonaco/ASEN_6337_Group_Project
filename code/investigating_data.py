@@ -16,6 +16,8 @@ from matplotlib.pyplot import savefig
 plt.rcParams['text.usetex'] = True
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = 'cm'
+import pickle
+
 
 # %% Getting data
 path = './understanding_cloud_organization'
@@ -27,7 +29,9 @@ N_test = len(os.listdir(f'{path}/test_images'))
 print(f'{N_labeled} training images and {N_test} test images available')
 
 # %% Getting label_keys
-label_keys = pd.read_csv(f'{path}/train.csv', index_col=False)
+with open('train.pkl', 'rb') as f:
+    label_keys = pickle.load(f)
+# label_keys = pd.read_csv(f'{path}/train.csv', index_col=False)
 label_keys['label'] = label_keys['Image_Label'].apply(lambda x: x.split('_')[1])
 label_keys['im_id'] = label_keys['Image_Label'].apply(lambda x: x.split('_')[0])
 class_names = label_keys['label'].unique()   # Name of all labels
@@ -63,24 +67,11 @@ for idx, row in training_df.iterrows():
         row['num_labels'] += 1
     training_df.iloc[idx] = row
 
-# %% Saving this as a .csv
-write_csv = training_df.copy()
+# %% Saving this as a .pkl
+with open('better_df.pkl', 'wb') as f:
+    # Dump the data into the file
+    pickle.dump(training_df, f)
 
-
-def arr2str(arr):
-    '''
-    Formatter to save the RLE mask arrays as strings
-    '''
-    if not np.isnan(arr).any():
-        string = " ".join(map(str, arr))
-    else:
-        string = np.nan
-    return string
-
-
-for label in class_names:
-    write_csv[label] = write_csv[label].apply(lambda x: arr2str(x))
-write_csv.to_csv('better_df.csv', index=False)
 # %%  Plotting single images
 single_label_imgs = training_df[training_df.num_labels == 1]
 

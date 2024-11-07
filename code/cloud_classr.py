@@ -34,17 +34,13 @@ import matplotlib.pyplot as plt
 plt.rcParams['text.usetex'] = True
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = 'cm'
+import pickle
 
 # %% Loading in the image data
 print('Loading in the training data...')
 kpath = './understanding_cloud_organization'     # path to images
-
-# Mask dataframe in better format
-label_keys = pd.read_csv('better_df.csv',
-                         converters={'Fish': kh.str2intarr,
-                                     'Flower': kh.str2intarr,
-                                     'Gravel': kh.str2intarr,
-                                     'Sugar': kh.str2intarr})
+with open('better_df.pkl', 'rb') as f:
+    label_keys = pickle.load(f)
 
 # Number of files
 N_labeled = len(os.listdir(f'{kpath}/train_images'))
@@ -62,7 +58,7 @@ frac_training = 0.9                                 # Fraction of images to choo
 num_training = int(N_labeled * frac_training)
 training_keys = label_keys.sample(num_training)     # Random training data
 valid_keys = label_keys.loc[~label_keys.index.isin(training_keys.index)]
-
+print(f'Using {frac_training * 100:.0f}% of data for training...')
 
 # --- Setting up training data --- #
 batch_sz = 8                                        # How many images to consider per batch
@@ -71,7 +67,7 @@ train_dataset = kh.CloudDataset_PCA(training_keys,
 train_loader = DataLoader(train_dataset,
                           batch_size=batch_sz,
                           shuffle=True)
-print(f'Data divided in to {len(train_loader)} batches of {batch_sz} images each.')
+print(f'Training data divided in to {len(train_loader)} batches of {batch_sz} images each.')
 
 # --- Setting up validation data --- #
 valid_dataset = kh.CloudDataset_PCA(valid_keys,
