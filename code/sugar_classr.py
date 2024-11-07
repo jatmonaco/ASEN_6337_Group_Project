@@ -17,11 +17,13 @@ Created on Mon Nov  4 12:07:36 2024
 
 # Analysis
 import pandas as pd
+import numpy as np
 import kaggle_helpers as kh
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
+from sklearn.decomposition import PCA
 
 # system tools
 import os
@@ -51,7 +53,7 @@ N_test = len(os.listdir(f'{kpath}/test_images'))
 # Getting info about pictures by investigating a random image
 rand_img_df = label_keys.sample(1).iloc[0]
 rand_img = kh.get_img(rand_img_df.im_id, kpath)
-ht, wd, _ = rand_img.shape  # height and width of the images
+ht, wd, n_clrs = rand_img.shape  # height and width of the images
 N_px = int(ht * wd)         # Number of pixels per image
 
 # %% Separating out training and validation data
@@ -64,14 +66,14 @@ valid_keys = label_keys.loc[~label_keys.index.isin(training_keys.index)]
 
 # --- Setting up training data --- #
 batch_sz = 8                                        # How many images to consider per batch
-train_dataset = kh.CloudDataset(training_keys, datatype='train')
+train_dataset = kh.CloudDataset_PCA(training_keys, datatype='train')
 train_loader = DataLoader(train_dataset,
                           batch_size=batch_sz,
                           shuffle=True)
 print(f'Data divided in to {len(train_loader)} batches of {batch_sz} images each.')
 
 # --- Setting up validation data --- #
-valid_dataset = kh.CloudDataset(valid_keys, datatype='train')
+valid_dataset = kh.CloudDataset_PCA(valid_keys, datatype='train')
 valid_loader = DataLoader(valid_dataset,
                           batch_size=batch_sz)
 
@@ -81,14 +83,14 @@ print('Creating NN model...')
 
 class CloudClassr(nn.Module):
     '''
-    Kawther's model
+    Based on Kawther's model
     '''
 
     def __init__(self):
         super(CloudClassr, self).__init__()
 
         # Encoder: Downsampling with convolutions and max-pooling
-        self.enc1 = nn.Conv2d(3, 16, kernel_size=3, padding=1)
+        self.enc1 = nn.Conv2d(1, 16, kernel_size=3, padding=1)
         self.enc2 = nn.Conv2d(16, 32, kernel_size=3, padding=1)
         self.enc3 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
 
@@ -129,10 +131,13 @@ criterion = nn.BCELoss()                                        # Loss function 
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)   # Gradient optimizer
 # optimizer = torch.optim.SGD(params=model.parameters(),
 #                             lr=0.1)
-epochs = 5                                                 # Number of training epochs
+epochs = 7                                                 # Number of training epochs
 
 print(f'Training NN with {epochs} epochs, each with {batch_sz} images...')
 
+train_losses = np.ones(epochs) * np.nan
+test_losses = np.ones(epochs) * np.nan
+test_accs = np.ones(epochs) * np.nan
 for epoch in tqdm.trange(epochs, desc='Epochs: '):
 
     # --- Training Model --- #
@@ -162,6 +167,7 @@ for epoch in tqdm.trange(epochs, desc='Epochs: '):
         # print(f'Training loss: {loss:.3f}')
         data_iter.set_postfix({"Training Loss": loss.item()})
     train_loss /= len(train_loader)
+    train_losses[epoch] = train_loss
 
     # --- Evaluating model --- #
     model.eval()
@@ -186,9 +192,11 @@ for epoch in tqdm.trange(epochs, desc='Epochs: '):
 
         # Calculate the test loss average per batch
         test_loss /= len(valid_loader)
+        test_losses[epoch] = test_loss
 
         # Calculate the test acc average per batch
         test_acc /= len(valid_loader)
+        test_accs[epoch] = test_acc
     print(f'For epoch {epoch}, there was an average training loss per batch of \
     {train_loss:.2f}, average test loss of {test_loss:.2f}, and accuracy of \
     {test_acc:.1f}%')

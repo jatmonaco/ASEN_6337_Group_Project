@@ -11,8 +11,10 @@ Created on Fri Oct 25 13:45:35 2024
 import numpy as np
 import cv2
 import os
-from torch.utils.data import TensorDataset, DataLoader, Dataset
+from torch.utils.data import Dataset
 import pandas as pd
+from sklearn.decomposition import PCA
+
 
 # %% Matrix helpers
 
@@ -62,6 +64,55 @@ class CloudDataset(Dataset):
         rle = img_df[f'{label}']
         mask = rle2mask(rle)
         return img, mask
+
+    def __len__(self):
+        return len(self.df)
+
+
+class CloudDataset_PCA(Dataset):
+    '''
+    A pytorch dataloader for the cloud dataset. 
+    Based on the function of the same name found here: 
+        https://www.kaggle.com/code/dhananjay3/image-segmentation-from-scratch-in-pytorch#Helper-functions
+
+    Returns unnormalized (0-255) 2D arrays of images and masks 
+    '''
+
+    def __init__(
+        self,
+        df: pd.DataFrame = None,
+        datatype: str = "train",
+        img_paths: str = './understanding_cloud_organization'
+    ):
+        self.df = df
+        if datatype != "test":
+            self.data_folder = f"{img_paths}/train_images"
+        else:
+            self.data_folder = f"{img_paths}/test_images"
+        self.labels = ['Sugar', 'Flower', 'Gravel', 'Fish']
+
+    def __getitem__(self, idx, label: str = 'Sugar'):
+        img_df = self.df.iloc[idx]
+
+        # Getting image
+        image_name = img_df.im_id
+        image_path = os.path.join(self.data_folder, image_name)
+        img = cv2.imread(image_path)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+        # PCA data reduction
+        ht, wd, n_clrs = img.shape
+        X = img.reshape(-1, n_clrs)
+        pca = PCA(n_components=1)
+        pca.fit(X)
+        img_PCA = pca.fit_transform(X)
+        img_PCA = np.reshape(img_PCA, (ht, wd, 1))
+        img_PCA = norm_matrix(img_PCA)
+
+        # Getting mask of this label
+        rle = img_df[f'{label}']
+        mask = rle2mask(rle)
+        return img_PCA, mask
 
     def __len__(self):
         return len(self.df)
