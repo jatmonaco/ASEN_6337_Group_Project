@@ -66,16 +66,16 @@ valid_keys = label_keys.loc[~label_keys.index.isin(training_keys.index)]
 
 # --- Setting up training data --- #
 batch_sz = 8                                        # How many images to consider per batch
-train_dataset = kh.CloudDataset_PCA_1label(training_keys, label='Sugar',
-                                           datatype='train')
+train_dataset = kh.CloudDataset_PCA(training_keys,
+                                    datatype='train')
 train_loader = DataLoader(train_dataset,
                           batch_size=batch_sz,
                           shuffle=True)
 print(f'Data divided in to {len(train_loader)} batches of {batch_sz} images each.')
 
 # --- Setting up validation data --- #
-valid_dataset = kh.CloudDataset_PCA_1label(valid_keys, label='Sugar',
-                                           datatype='train')
+valid_dataset = kh.CloudDataset_PCA(valid_keys,
+                                    datatype='train')
 valid_loader = DataLoader(valid_dataset,
                           batch_size=batch_sz)
 
@@ -85,7 +85,7 @@ print('Creating NN model...')
 
 class CloudClassr(nn.Module):
     '''
-    Based on Kawther's model
+    Takes in 1 channel PCA'd image, and outputs masks for all four classes. 
     '''
 
     def __init__(self):
@@ -99,7 +99,7 @@ class CloudClassr(nn.Module):
         # Decoder: Upsampling with transposed convolutions
         self.up1 = nn.ConvTranspose2d(64, 32, kernel_size=2, stride=2)
         self.up2 = nn.ConvTranspose2d(32, 16, kernel_size=2, stride=2)
-        self.final_conv = nn.Conv2d(16, 1, kernel_size=1)  # Output layer for binary mask
+        self.final_conv = nn.Conv2d(16, 4, kernel_size=1)  # Output layer for binary mask
 
     def forward(self, x):
         # Encoding (Downsampling)
@@ -137,13 +137,14 @@ optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)   # Gradient optimizer
 #                             lr=0.1)
 
 # --- Training --- #
-epochs = 7              # Number of training epochs
+epochs = 12              # Number of training epochs
 print(f'Training NN with {epochs} epochs...')
 
 # Losses and accuracies to plot for each epoch
 train_losses = np.ones(epochs) * np.nan
 test_losses = np.ones(epochs) * np.nan
 test_accs = np.ones(epochs) * np.nan
+DICEs = np.ones(epochs) * np.nan
 
 # Training / evaluation loop
 for epoch in tqdm.trange(epochs, desc='Epochs: '):
@@ -179,7 +180,7 @@ for epoch in tqdm.trange(epochs, desc='Epochs: '):
 
     # --- Evaluation Loop --- #
     model.eval()
-    test_loss, test_acc = 0, 0
+    test_loss, test_acc, DICE = 0, 0, 0
     with torch.inference_mode():
         data_iter = tqdm.tqdm(valid_loader, desc='    Valid. Batch: ',
                               postfix={"Pct. Accuracy": 0})
@@ -194,9 +195,14 @@ for epoch in tqdm.trange(epochs, desc='Epochs: '):
 
             # Calculate accuracy
             correct = torch.eq(test_truth, test_pred.round()).sum().item()
-            acc = (correct / len(test_pred) / N_px) * 100
+            acc = (correct / test_pred.numel()) * 100
             test_acc += acc
             data_iter.set_postfix({"Pct. Accuracy": acc})
+
+            # Calculate DICE score
+            DICE_1b = kh.DICE_score(test_truth.cpu().numpy(),
+                                    test_pred.round().cpu().numpy())
+            DICE += DICE_1b
 
         # Calculate the test loss average per batch
         test_loss /= len(valid_loader)
@@ -206,13 +212,17 @@ for epoch in tqdm.trange(epochs, desc='Epochs: '):
         test_acc /= len(valid_loader)
         test_accs[epoch] = test_acc
 
+        # Calc avg DICE score for this epoch
+        DICE /= len(valid_loader)
+        DICEs[epoch] = DICE
+
     print(f'For epoch {epoch}, there was an average training loss per batch of \
     {train_loss:.2f}, average test loss of {test_loss:.2f}, and accuracy of \
     {test_acc:.1f}%')
 
 # --- Saving the model --- #
 torch.save(obj=model.state_dict(),
-           f='cloudClassr_v1')
+           f='cloudClassr_v2')
 
 # %% Plotting metrics over the course of training
 fig, ax = plt.subplots(1, 1, figsize=(4, 4), layout='constrained')
@@ -228,7 +238,7 @@ ax.set_ylabel('Loss')
 # Plotting accuracy
 ax_acc = ax.twinx()
 acc_line = ax_acc.plot(plt_epochs, test_accs, 'r.--')
-ax_acc.set_ylabel('Model Accuracy [\%]', color=acc_line[0].get_color())
+ax_acc.set_ylabel(r'Model Accuracy [\%]', color=acc_line[0].get_color())
 ax_acc.tick_params(axis='y', color=acc_line[0].get_color())
 
 # Formatting
