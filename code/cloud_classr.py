@@ -58,7 +58,7 @@ N_px = int(ht * wd)         # Number of pixels per image
 
 # %% Separating out training and validation data
 print('Creating training and validation datasets...')
-frac_training = 0.8                                 # Fraction of images to choose for training
+frac_training = 0.9                                 # Fraction of images to choose for training
 num_training = int(N_labeled * frac_training)
 training_keys = label_keys.sample(num_training)     # Random training data
 valid_keys = label_keys.loc[~label_keys.index.isin(training_keys.index)]
@@ -164,6 +164,7 @@ for epoch in tqdm.trange(epochs, desc='Epochs: '):
         X_truth = torch.Tensor(target).float().to(device)
         loss = criterion(X_pred, X_truth)
         train_loss += loss
+        data_iter.set_postfix({"Training Loss": loss.item()})
 
         # Optimizer zero grad
         optimizer.zero_grad() 
@@ -173,18 +174,18 @@ for epoch in tqdm.trange(epochs, desc='Epochs: '):
 
         # gradient descent)
         optimizer.step()
-        # print(f'Training loss: {loss:.3f}')
-        data_iter.set_postfix({"Training Loss": loss.item()})
+
     train_loss /= len(train_loader)
     train_losses[epoch] = train_loss
 
     # --- Evaluation Loop --- #
-    model.eval()
     test_loss, test_acc, DICE = 0, 0, 0
     with torch.inference_mode():
         data_iter = tqdm.tqdm(valid_loader, desc='    Valid. Batch: ',
                               postfix={"Pct. Accuracy": 0})
         for data, target in data_iter:
+            model.eval()    # set model to evaluation mode
+
             # Forward pass
             X_test = torch.Tensor(data).float().permute(0, 3, 1, 2).to(device)
             test_pred = model(X_test)
@@ -204,11 +205,11 @@ for epoch in tqdm.trange(epochs, desc='Epochs: '):
                                     test_pred.round().cpu().numpy())
             DICE += DICE_1b
 
-        # Calculate the test loss average per batch
+        # Calculate the average test loss for this epoch
         test_loss /= len(valid_loader)
         test_losses[epoch] = test_loss
 
-        # Calculate the test acc average per batch
+        # Calculate the average test acc for this epoch
         test_acc /= len(valid_loader)
         test_accs[epoch] = test_acc
 
@@ -225,22 +226,30 @@ torch.save(obj=model.state_dict(),
            f='cloudClassr_v2')
 
 # %% Plotting metrics over the course of training
-fig, ax = plt.subplots(1, 1, figsize=(4, 4), layout='constrained')
+fig, axs = plt.subplots(1, 2, figsize=(4, 4), layout='constrained')
 
 # Plotting losses
 plt_epochs = np.arange(epochs)
+ax = axs[0]
 ax.plot(plt_epochs, train_losses, '.-', label='Training Loss')
 ax.plot(plt_epochs, test_losses, '.-', label='Testing Loss')
 ax.legend()
 ax.set_xlabel('Epoch Number')
 ax.set_ylabel('Loss')
+ax.set_title('Evolution of Losses over Training')
+
+# Plotting DICE score
+ax_DICE = axs[1]
+ax_DICE.plot(plt_epochs, DICEs, '.-')
+ax_DICE.set_ylabel('DICE Score')
+ax_DICE.set_xlabel('Epoch Number')
+ax_DICE.set_title('Evaluation Metrics over Training')
 
 # Plotting accuracy
-ax_acc = ax.twinx()
-acc_line = ax_acc.plot(plt_epochs, test_accs, 'r.--')
-ax_acc.set_ylabel(r'Model Accuracy [\%]', color=acc_line[0].get_color())
-ax_acc.tick_params(axis='y', color=acc_line[0].get_color())
+ax_acc = ax_DICE.twinx()
+ax_acc.plot(plt_epochs, test_accs, 'r.-')
+ax_acc.set_ylabel(r'Model Accuracy [\%]', color='r')
+ax_acc.tick_params(axis='y', color='r')
 
 # Formatting
-fig.suptitle('Model Metrics with Training')
 plt.show()
