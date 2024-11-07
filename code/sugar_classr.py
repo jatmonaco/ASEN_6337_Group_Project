@@ -171,12 +171,11 @@ for epoch in tqdm.trange(epochs, desc='Epochs: '):
                               postfix={"Pct. Accuracy": 0})
         for data, target in data_iter:
             # Forward pass
-            X_test = torch.Tensor(data).float().to(device)
+            X_test = torch.Tensor(data).float().permute(0, 3, 1, 2).to(device)
             test_pred = model(X_test)
 
             # Calculate loss (accumulatively)
             test_truth = torch.Tensor(target).float().to(device)
-            test_truth = test_truth.flatten(1, -1)
             test_loss += criterion(test_pred, test_truth)
 
             # Calculate accuracy

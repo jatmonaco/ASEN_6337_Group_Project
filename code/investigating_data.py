@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 import matplotlib.pyplot as plt
-import kaggle_helpers as KH
+import kaggle_helpers as kh
 from matplotlib.pyplot import savefig
 plt.rcParams['text.usetex'] = True
 plt.rcParams['font.family'] = 'serif'
@@ -95,7 +95,7 @@ for class_name, ax, color in zip(class_names, axs.flatten(), colors):
 
     # Getting mask
     mask_rle = single_label_img[f'{class_name}']
-    mask_img = KH.rle2mask(mask_rle)
+    mask_img = kh.rle2mask(mask_rle)
     ax.contour(mask_img, colors=color)
     ax.imshow(mask_img, alpha=mask_img * 0.5, cmap='gray')
 
@@ -122,7 +122,7 @@ ax.imshow(img)
 colors = ['c', 'm', 'y', 'g']
 for class_name, color in zip(class_names, colors):
     mask_rle = all_label_img[f'{class_name}']
-    mask_img = KH.rle2mask(mask_rle)
+    mask_img = kh.rle2mask(mask_rle)
     ax.contour(mask_img, colors=color)
     ax.imshow(mask_img, alpha=mask_img * 0.25, cmap='gray')
 
