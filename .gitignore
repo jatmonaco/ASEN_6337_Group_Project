@@ -4,6 +4,7 @@ code/understanding_cloud_organization/*
 code/hw3_data/*
 code/better_df.csv
 code/*.pkl
+code/*.pth
 ## Core latex/pdflatex auxiliary files:
 *.aux
 *.lof

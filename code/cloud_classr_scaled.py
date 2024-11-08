@@ -16,6 +16,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
+from torchvision import datasets, transforms
 
 # system tools
 import os
@@ -30,32 +31,37 @@ import pickle
 
 # %% Loading in the image data
 print('Loading in the training data...')
-kpath = './understanding_cloud_organization'     # path to images
+
+# Opening the better df pkl located in the same directory as this file
 with open('better_df.pkl', 'rb') as f:
     label_keys = pickle.load(f)
 
+
 # Number of files
+kpath = './understanding_cloud_organization'            # kaggle data path
 N_labeled = len(os.listdir(f'{kpath}/train_images'))
 N_test = len(os.listdir(f'{kpath}/test_images'))
 
 # Getting info about pictures by investigating a random image
 rand_img_df = label_keys.sample(1).iloc[0]
 rand_img = kh.get_img(rand_img_df.im_id, kpath)
-ht, wd, n_clrs = rand_img.shape  # height and width of the images
+ht, wd, n_clrs = rand_img.shape  # dimentionality of the images
 
 # %% Separating out training and validation data
 print('Creating training and validation datasets...')
 frac_training = 0.9                                 # Fraction of images to choose for training
-num_training = int(N_labeled * frac_training)
-training_keys = label_keys.sample(num_training)     # Random training data
-valid_keys = label_keys.loc[~label_keys.index.isin(training_keys.index)]
+num_training = int(N_labeled * frac_training)       # Number of images for training
+training_keys = label_keys.sample(num_training)     # Random images for training
+valid_keys = label_keys.loc[~label_keys.index.isin(training_keys.index)]    # Rest of the images for validation
 print(f'Using {frac_training * 100:.0f}% of data for training...')
 
 # --- Setting up training data --- #
-batch_sz = 8                                        # How many images to consider per batch
+batch_sz = 32                                       # How many images to consider per batch
+downscale_factor = 4                                # Approximate factor of decimation
+
 train_dataset = kh.CloudDataset_PCA_scaled(training_keys,
-                                           downscale_factor=2,
-                                           datatype='train')
+                                           downscale_factor=downscale_factor,
+                                           img_paths=f'{kpath}/train_images')
 train_loader = DataLoader(train_dataset,
                           batch_size=batch_sz,
                           shuffle=True)
@@ -63,8 +69,8 @@ print(f'Training data divided in to {len(train_loader)} batches of {batch_sz} im
 
 # --- Setting up validation data --- #
 valid_dataset = kh.CloudDataset_PCA_scaled(valid_keys,
-                                           downscale_factor=2,
-                                           datatype='train')
+                                           downscale_factor=downscale_factor,
+                                           img_paths=f'{kpath}/train_images')
 valid_loader = DataLoader(valid_dataset,
                           batch_size=batch_sz)
 
@@ -110,8 +116,7 @@ class CloudClassr(nn.Module):
 
 
 # Device for data and model
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-device = 'cpu'
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Creating an instance of the model on the target device
 model = CloudClassr()
@@ -127,14 +132,14 @@ optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)   # Gradient optimizer
 #                             lr=0.1)
 
 # --- Training --- #
-epochs = 24              # Number of training epochs
+epochs = 5              # Number of training epochs
 print(f'Training NN with {epochs} epochs...')
 
 # Losses and accuracies to plot for each epoch
 train_losses = np.ones(epochs) * np.nan
 test_losses = np.ones(epochs) * np.nan
 test_accs = np.ones(epochs) * np.nan
-DICEs = np.ones(epochs) * np.nan
+test_DICEs = np.ones(epochs) * np.nan
 
 # Training / evaluation loop
 for epoch in tqdm.trange(epochs, desc='Epochs: '):
@@ -147,11 +152,11 @@ for epoch in tqdm.trange(epochs, desc='Epochs: '):
         model.train()   # Setting model to training mode
 
         # Forward pass: Predicting the labels on the training data
-        X_train = torch.Tensor(data).float().permute(0, 3, 1, 2).to(device)
+        X_train = data
         X_pred = model(X_train)
 
         # Calculate loss for this batch
-        X_truth = torch.Tensor(target).float().to(device)
+        X_truth = target
         loss = criterion(X_pred, X_truth)
         train_loss += loss
         data_iter.set_postfix({"Training Loss": loss.item()})
@@ -169,7 +174,7 @@ for epoch in tqdm.trange(epochs, desc='Epochs: '):
     train_losses[epoch] = train_loss
 
     # --- Evaluation Loop --- #
-    test_loss, test_acc, DICE = 0, 0, 0
+    epoch_loss, epoch_acc, epoch_DICE = 0, 0, 0
     with torch.inference_mode():
         data_iter = tqdm.tqdm(valid_loader, desc='    Valid. Batch: ',
                               postfix={"Pct. Accuracy": 0})
@@ -177,46 +182,45 @@ for epoch in tqdm.trange(epochs, desc='Epochs: '):
             model.eval()    # set model to evaluation mode
 
             # Forward pass
-            X_test = torch.Tensor(data).float().permute(0, 3, 1, 2).to(device)
+            X_test = data
             test_pred = model(X_test)
 
             # Calculate loss (accumulatively)
-            test_truth = torch.Tensor(target).float().to(device)
-            test_loss += criterion(test_pred, test_truth)
+            test_truth = target
+            epoch_loss += criterion(test_pred, test_truth)
 
             # Calculate accuracy
-            correct = torch.eq(test_truth, test_pred.round()).sum().item()
-            acc = (correct / test_pred.numel()) * 100
-            test_acc += acc
-            data_iter.set_postfix({"Pct. Accuracy": acc})
+            num_correct = torch.eq(test_truth, test_pred.round()).sum().item()
+            batch_acc = (num_correct / test_pred.numel()) * 100
+            epoch_acc += batch_acc
+            data_iter.set_postfix({"Pct. Accuracy": batch_acc})
 
             # Calculate DICE score
-            DICE_1b = kh.DICE_score(test_truth.cpu().numpy(),
-                                    test_pred.round().cpu().numpy())
-            DICE += DICE_1b
+            batch_DICE = 2 * num_correct / (test_pred.numel() + test_truth.numel())
+            epoch_DICE += batch_DICE
 
         # Calculate the average test loss for this epoch
-        test_loss /= len(valid_loader)
-        test_losses[epoch] = test_loss
+        epoch_loss /= len(valid_loader)
+        test_losses[epoch] = epoch_loss
 
         # Calculate the average test acc for this epoch
-        test_acc /= len(valid_loader)
-        test_accs[epoch] = test_acc
+        epoch_acc /= len(valid_loader)
+        test_accs[epoch] = epoch_acc
 
         # Calc avg DICE score for this epoch
-        DICE /= len(valid_loader)
-        DICEs[epoch] = DICE
+        epoch_DICE /= len(valid_loader)
+        test_DICEs[epoch] = epoch_DICE
 
     print(f'For epoch {epoch}, there was an average training loss per batch of \
-    {train_loss:.2f}, average test loss of {test_loss:.2f}, and accuracy of \
-    {test_acc:.1f}%')
+    {epoch_loss:.2f}, average test loss of {epoch_loss:.2f}, and accuracy of \
+    {epoch_acc:.1f}%')
 
-# --- Saving the model --- #
+# %% --- Saving the model --- #
 torch.save(obj=model.state_dict(),
-           f='cloudClassr_v2')
+           f='cloudClassr_allclass_downscaled_v1.pth')
 
 # %% Plotting metrics over the course of training
-fig, axs = plt.subplots(1, 2, figsize=(4, 4), layout='constrained')
+fig, axs = plt.subplots(1, 2, figsize=(8, 4), layout='constrained')
 
 # Plotting losses
 plt_epochs = np.arange(epochs)
@@ -230,7 +234,7 @@ ax.set_title('Evolution of Losses over Training')
 
 # Plotting DICE score
 ax_DICE = axs[1]
-ax_DICE.plot(plt_epochs, DICEs, '.-')
+ax_DICE.plot(plt_epochs, test_DICEs, '.-')
 ax_DICE.set_ylabel('DICE Score')
 ax_DICE.set_xlabel('Epoch Number')
 ax_DICE.set_title('Evaluation Metrics over Training')
