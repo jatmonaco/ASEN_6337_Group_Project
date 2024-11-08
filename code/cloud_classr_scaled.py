@@ -35,7 +35,7 @@ with open('better_df.pkl', 'rb') as f:
     label_keys = pickle.load(f)
 
 # Number of files
-kpath = './understanding_cloud_organization'            # kaggle data path, containing the training images 
+kpath = './understanding_cloud_organization'            # kaggle data path, containing the training images
 # label_keys = label_keys.sample(1000)                    # just using 1000 images for testing things
 N_labeled = len(label_keys)
 
@@ -214,7 +214,7 @@ for epoch in tqdm.trange(epochs, desc='Epochs: '):
 
     print(f'For epoch {epoch}, there was an average training loss per batch of \
     {epoch_loss:.2f}, average test loss of {epoch_loss:.2f}, and DICE of \
-    {epoch_DICE:.2f}%')
+    {epoch_DICE:.2f}.')
 
 # %% --- Saving the model --- #
 torch.save(obj=model.state_dict(),
