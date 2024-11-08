@@ -56,12 +56,16 @@ valid_keys = label_keys.loc[~label_keys.index.isin(training_keys.index)]    # Re
 print(f'Using {frac_training * 100:.0f}% of data for training...')
 
 # --- Setting up training data --- #
+# Device for data and model
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = 'cpu'
 batch_sz = 32                                       # How many images to consider per batch
 downscale_factor = 4                                # Approximate factor of decimation
 
 train_dataset = kh.CloudDataset_PCA_scaled(training_keys,
                                            downscale_factor=downscale_factor,
-                                           img_paths=f'{kpath}/train_images')
+                                           img_paths=f'{kpath}/train_images',
+                                           device=device)
 train_loader = DataLoader(train_dataset,
                           batch_size=batch_sz,
                           shuffle=True)
@@ -70,7 +74,8 @@ print(f'Training data divided in to {len(train_loader)} batches of {batch_sz} im
 # --- Setting up validation data --- #
 valid_dataset = kh.CloudDataset_PCA_scaled(valid_keys,
                                            downscale_factor=downscale_factor,
-                                           img_paths=f'{kpath}/train_images')
+                                           img_paths=f'{kpath}/train_images',
+                                           device=device)
 valid_loader = DataLoader(valid_dataset,
                           batch_size=batch_sz)
 
@@ -115,9 +120,6 @@ class CloudClassr(nn.Module):
         return x.squeeze()
 
 
-# Device for data and model
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 # Creating an instance of the model on the target device
 model = CloudClassr()
 model.to(device)
@@ -132,7 +134,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)   # Gradient optimizer
 #                             lr=0.1)
 
 # --- Training --- #
-epochs = 5              # Number of training epochs
+epochs = 3              # Number of training epochs
 print(f'Training NN with {epochs} epochs...')
 
 # Losses and accuracies to plot for each epoch
@@ -196,7 +198,8 @@ for epoch in tqdm.trange(epochs, desc='Epochs: '):
             data_iter.set_postfix({"Pct. Accuracy": batch_acc})
 
             # Calculate DICE score
-            batch_DICE = 2 * num_correct / (test_pred.numel() + test_truth.numel())
+            batch_DICE = kh.DICE(test_truth.cpu().numpy(),
+                                 test_pred.round().cpu().numpy())
             epoch_DICE += batch_DICE
 
         # Calculate the average test loss for this epoch

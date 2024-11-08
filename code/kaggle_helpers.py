@@ -95,6 +95,20 @@ def get_img(img_name: str,
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     return np.array(img, dtype=float)
 
+
+def DICE(img1, img2):
+    '''
+    DICE score. 
+
+    Taken from: https://www.kaggle.com/code/artgor/segmentation-in-pytorch-using-convenient-tools#Helper-functions-and-classes
+    '''
+    img1 = np.asarray(img1).astype(np.bool)
+    img2 = np.asarray(img2).astype(np.bool)
+
+    intersection = np.logical_and(img1, img2)
+
+    return 2. * intersection.sum() / (img1.sum() + img2.sum())
+
 # %% Datasets and dataloader classes for NN
 
 
@@ -209,7 +223,8 @@ class CloudDataset_PCA_scaled(Dataset):
         self,
         df: pd.DataFrame = None,
         downscale_factor: int = 4,
-        img_paths: str = './understanding_cloud_organization/train_imgs'
+        img_paths: str = './understanding_cloud_organization/train_imgs',
+        device='cuda'
     ):
         self.df = df
         self.labels = ['Sugar', 'Flower', 'Gravel', 'Fish']
@@ -217,7 +232,7 @@ class CloudDataset_PCA_scaled(Dataset):
 
         self.data_folder = img_paths
         self.labels = ['Sugar', 'Flower', 'Gravel', 'Fish']
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = device
 
         # Getting downsampling dimentions by investigating random image
         rand_img_df = self.df.sample(1).iloc[0]
