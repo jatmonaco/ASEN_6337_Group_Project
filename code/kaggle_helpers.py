@@ -96,14 +96,14 @@ def get_img(img_name: str,
     return np.array(img, dtype=float)
 
 
-def DICE(img1, img2):
+def dice(img1, img2):
     '''
-    DICE score. 
+    DICE score between two numpy arrays. 
 
     Taken from: https://www.kaggle.com/code/artgor/segmentation-in-pytorch-using-convenient-tools#Helper-functions-and-classes
     '''
-    img1 = np.asarray(img1).astype(np.bool)
-    img2 = np.asarray(img2).astype(np.bool)
+    img1 = np.asarray(img1).astype(bool)
+    img2 = np.asarray(img2).astype(bool)
 
     intersection = np.logical_and(img1, img2)
 
@@ -112,60 +112,13 @@ def DICE(img1, img2):
 # %% Datasets and dataloader classes for NN
 
 
-class CloudDataset_PCA_1label(Dataset):
-    '''
-    A pytorch dataloader for the cloud dataset, returning just 1 class
-    Based on the class found here: 
-        https://www.kaggle.com/code/dhananjay3/image-segmentation-from-scratch-in-pytorch#Helper-functions
-
-    Returns normalized, single-channel 2D array of PCA'd image, and unmodified mask
-    '''
-
-    def __init__(
-        self,
-        df: pd.DataFrame = None,
-        label: str = 'Sugar',
-        img_paths: str = './understanding_cloud_organization'
-    ):
-        self.df = df
-        self.label = label
-        self.data_folder = img_paths
-        self.labels = ['Sugar', 'Flower', 'Gravel', 'Fish']
-
-    def __getitem__(self, idx):
-        img_df = self.df.iloc[idx]
-
-        # Getting image
-        image_name = img_df.im_id
-        image_path = os.path.join(self.data_folder, image_name)
-        img = cv2.imread(image_path)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
-        # PCA data reduction
-        ht, wd, n_clrs = img.shape
-        X = img.reshape(-1, n_clrs)
-        pca = PCA(n_components=1)
-        pca.fit(X)
-        img_PCA = pca.fit_transform(X)
-        img_PCA = np.reshape(img_PCA, (ht, wd, 1))
-        img_PCA = norm_matrix(img_PCA)
-
-        # Getting mask of this label
-        rle = img_df[f'{self.label}']
-        mask = rle2mask(rle)
-        return img_PCA, mask
-
-    def __len__(self):
-        return len(self.df)
-
-
 class CloudDataset_PCA(Dataset):
     '''
     A pytorch dataloader for the cloud dataset, returning the 1D PCA'd img and its 4D class masks 
     Based on the function found here: 
         https://www.kaggle.com/code/dhananjay3/image-segmentation-from-scratch-in-pytorch#Helper-functions
 
-    Returns normalized, single-channel 2D array of PCA'd image, and unmodified mask
+    Returns normalized, single-channel 2D array of PCA'd image, and unmodified mask as numpy arrays 
     '''
 
     def __init__(
@@ -210,28 +163,28 @@ class CloudDataset_PCA(Dataset):
 
 class CloudDataset_PCA_scaled(Dataset):
     '''
-    A pytorch dataloader for the cloud dataset that downscales the image and 
-    mask by a factor 
+    A pytorch dataloader for the cloud dataset that applies PCA, puts everything 
+    as a tensor, downscales the image and mask by a factor, and pads appropriately.
 
     Based on the function of the same name found here: 
         https://www.kaggle.com/code/dhananjay3/image-segmentation-from-scratch-in-pytorch#Helper-functions
 
-    Returns normalized, single-channel 2D array of PCA'd image, and unmodified mask
+    Returns normalized, single-channel 2D array of PCA'd and downscaled image, 
+    and the downscaled mask. 
     '''
 
     def __init__(
         self,
         df: pd.DataFrame = None,
         downscale_factor: int = 4,
-        img_paths: str = './understanding_cloud_organization/train_imgs',
-        device='cuda'
+        img_paths: str = './understanding_cloud_organization/train_imgs',       # Where the images are kept
+        device: str = 'cuda',
+        min_kernel_wd: int = 4  # The downscaled images dimentionality will be padded to be an integer multiple of this number
     ):
         self.df = df
         self.labels = ['Sugar', 'Flower', 'Gravel', 'Fish']
         self.dscale = int(downscale_factor)
-
         self.data_folder = img_paths
-        self.labels = ['Sugar', 'Flower', 'Gravel', 'Fish']
         self.device = device
 
         # Getting downsampling dimentions by investigating random image
@@ -241,22 +194,23 @@ class CloudDataset_PCA_scaled(Dataset):
         img = cv2.imread(image_path)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-        # Getting dimentionality of images and padding
+        # Dimentionality of input image
         ht, wd, n_clrs = img.shape
         self.ht = ht
         self.wd = wd
         self.n_clrs = n_clrs
-        self.ht_pad = 4 - (ht // self.dscale % 4)
-        self.wd_pad = 4 - (wd // self.dscale % 4)
-        self.wd_pad_L = self.wd_pad // 2
-        self.wd_pad_R = -(self.wd_pad // -2)
-        self.ht_pad_T = self.ht_pad // 2
-        self.ht_pad_B = -(self.ht_pad // -2)
+
+        # Calculating required padding to fit kernels
+        self.ht_pad = min_kernel_wd - (ht // self.dscale % min_kernel_wd)   # Total amount of padding to be added for the ht
+        self.wd_pad = min_kernel_wd - (wd // self.dscale % min_kernel_wd)   # Total amount of padding to be added for the wd
+        self.wd_pad_L = self.wd_pad // 2        # Left padding
+        self.wd_pad_R = -(self.wd_pad // -2)    # Right padding
+        self.ht_pad_T = self.ht_pad // 2        # Top padding
+        self.ht_pad_B = -(self.ht_pad // -2)    # Bottom padding
 
     def __getitem__(self, idx):
-        img_df = self.df.iloc[idx]
-
         # Getting image
+        img_df = self.df.iloc[idx]
         image_name = img_df.im_id
         image_path = os.path.join(self.data_folder, image_name)
         img = cv2.imread(image_path)
@@ -297,11 +251,12 @@ class CloudDataset_PCA_scaled(Dataset):
         # Resizing
         masks = F.interpolate(masks.unsqueeze(1),
                               size=(self.ht // self.dscale, self.wd // self.dscale))
+        # Rounding
+        masks = masks.round()
         # Padding the masks to make it compatable with the minimum kernel size
         masks = F.pad(masks,
                       pad=(self.wd_pad_L, self.wd_pad_R,
                            self.ht_pad_T, self.ht_pad_B))
-        masks = masks.round()
         masks = masks.squeeze(1)
         return img_PCA, masks
 

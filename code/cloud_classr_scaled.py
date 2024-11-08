@@ -9,25 +9,23 @@ Created on Mon Nov  4 12:07:36 2024
 # %% Imports
 
 # Analysis
-import pandas as pd
 import numpy as np
 import kaggle_helpers as kh
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
-from torchvision import datasets, transforms
 
 # system tools
-import os
 import tqdm
+import pickle
 
 # Plotting
 import matplotlib.pyplot as plt
 plt.rcParams['text.usetex'] = True
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = 'cm'
-import pickle
+import seaborn as sns
 
 # %% Loading in the image data
 print('Loading in the training data...')
@@ -36,11 +34,10 @@ print('Loading in the training data...')
 with open('better_df.pkl', 'rb') as f:
     label_keys = pickle.load(f)
 
-
 # Number of files
-kpath = './understanding_cloud_organization'            # kaggle data path
-N_labeled = len(os.listdir(f'{kpath}/train_images'))
-N_test = len(os.listdir(f'{kpath}/test_images'))
+kpath = './understanding_cloud_organization'            # kaggle data path, containing the training images 
+# label_keys = label_keys.sample(1000)                    # just using 1000 images for testing things
+N_labeled = len(label_keys)
 
 # Getting info about pictures by investigating a random image
 rand_img_df = label_keys.sample(1).iloc[0]
@@ -56,9 +53,7 @@ valid_keys = label_keys.loc[~label_keys.index.isin(training_keys.index)]    # Re
 print(f'Using {frac_training * 100:.0f}% of data for training...')
 
 # --- Setting up training data --- #
-# Device for data and model
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-device = 'cpu'
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Device for data and model
 batch_sz = 32                                       # How many images to consider per batch
 downscale_factor = 4                                # Approximate factor of decimation
 
@@ -134,13 +129,12 @@ optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)   # Gradient optimizer
 #                             lr=0.1)
 
 # --- Training --- #
-epochs = 3              # Number of training epochs
+epochs = 10              # Number of training epochs
 print(f'Training NN with {epochs} epochs...')
 
 # Losses and accuracies to plot for each epoch
 train_losses = np.ones(epochs) * np.nan
 test_losses = np.ones(epochs) * np.nan
-test_accs = np.ones(epochs) * np.nan
 test_DICEs = np.ones(epochs) * np.nan
 
 # Training / evaluation loop
@@ -179,7 +173,7 @@ for epoch in tqdm.trange(epochs, desc='Epochs: '):
     epoch_loss, epoch_acc, epoch_DICE = 0, 0, 0
     with torch.inference_mode():
         data_iter = tqdm.tqdm(valid_loader, desc='    Valid. Batch: ',
-                              postfix={"Pct. Accuracy": 0})
+                              postfix={"DICE": 0})
         for data, target in data_iter:
             model.eval()    # set model to evaluation mode
 
@@ -191,43 +185,79 @@ for epoch in tqdm.trange(epochs, desc='Epochs: '):
             test_truth = target
             epoch_loss += criterion(test_pred, test_truth)
 
-            # Calculate accuracy
-            num_correct = torch.eq(test_truth, test_pred.round()).sum().item()
-            batch_acc = (num_correct / test_pred.numel()) * 100
-            epoch_acc += batch_acc
-            data_iter.set_postfix({"Pct. Accuracy": batch_acc})
+            # Normalizing the predicted masks
+            pred_np = test_pred.cpu().numpy()           # Convert raw logits to numpy array
+            pred_maxs = np.max(pred_np, axis=(2, 3),    # Max of each max for each image
+                               keepdims=True)
+            pred_mins = np.min(pred_np, axis=(2, 3),    # min of each max for each image
+                               keepdims=True)
+            # If any max's are 0 (no labeled data for that labal and image), then max should be set to 1 to avoid divide by 0
+            pred_maxs = np.where(pred_maxs == 0, 1, pred_maxs)
+            pred_normald = (pred_np - pred_mins) / (pred_maxs - pred_mins)  # Normalizing between 0 and 1
+            pred_normald = np.round(pred_normald)                           # Rounding to get predicted masks
+
+            test_truth = test_truth.cpu().numpy()       # Convert truth to numpy array
 
             # Calculate DICE score
-            batch_DICE = kh.DICE(test_truth.cpu().numpy(),
-                                 test_pred.round().cpu().numpy())
+            batch_DICE = kh.dice(test_truth,
+                                 pred_normald)
+            data_iter.set_postfix({"DICE": batch_DICE})
             epoch_DICE += batch_DICE
 
         # Calculate the average test loss for this epoch
         epoch_loss /= len(valid_loader)
         test_losses[epoch] = epoch_loss
 
-        # Calculate the average test acc for this epoch
-        epoch_acc /= len(valid_loader)
-        test_accs[epoch] = epoch_acc
-
         # Calc avg DICE score for this epoch
         epoch_DICE /= len(valid_loader)
         test_DICEs[epoch] = epoch_DICE
 
     print(f'For epoch {epoch}, there was an average training loss per batch of \
-    {epoch_loss:.2f}, average test loss of {epoch_loss:.2f}, and accuracy of \
-    {epoch_acc:.1f}%')
+    {epoch_loss:.2f}, average test loss of {epoch_loss:.2f}, and DICE of \
+    {epoch_DICE:.2f}%')
 
 # %% --- Saving the model --- #
 torch.save(obj=model.state_dict(),
            f='cloudClassr_allclass_downscaled_v1.pth')
 
+# %% Checking outputs of model for last batch ran as a gut check
+fig, axs = plt.subplots(3, 4, figsize=(7.5, 5), layout='constrained')
+
+for label_num, label in enumerate(train_dataset.labels):
+    axs[0, label_num].set_title(label)  # Setting title
+
+    # --- Histogram of raw logits --- #
+    logits_1label = pred_np[:, label_num, :, :].flatten()
+    sns.histplot(logits_1label, ax=axs[0, label_num], stat='density')
+    axs[0, label_num].set_yticks([])
+    axs[0, label_num].set_ylabel('')
+
+    # --- Histogram of predicted masks --- #
+    pred_masks = pred_normald[:, label_num, :, :].flatten()
+    sns.histplot(pred_masks, ax=axs[1, label_num], stat='density',
+                 binwidth=0.02)
+    axs[1, label_num].set_yticks([])
+    axs[1, label_num].set_ylabel('')
+
+    # --- Histogram of truth masks --- #
+    truth_masks = test_truth[:, label_num, :, :].flatten()
+    sns.histplot(truth_masks, ax=axs[2, label_num], stat='density',
+                 binwidth=0.02)
+    axs[2, label_num].set_yticks([])
+    axs[2, label_num].set_ylabel('')
+
+# Formatting plots
+axs[0, 0].set_ylabel('Raw Logits')
+axs[1, 0].set_ylabel('Predicted Masks')
+axs[2, 0].set_ylabel('Truth Masks')
+fig.suptitle('Distribution of Masks and Logits for Final Batch')
+plt.show()
+
 # %% Plotting metrics over the course of training
-fig, axs = plt.subplots(1, 2, figsize=(8, 4), layout='constrained')
+fig, ax = plt.subplots(1, 1, figsize=(8, 4), layout='constrained')
 
 # Plotting losses
 plt_epochs = np.arange(epochs)
-ax = axs[0]
 ax.plot(plt_epochs, train_losses, '.-', label='Training Loss')
 ax.plot(plt_epochs, test_losses, '.-', label='Testing Loss')
 ax.legend()
@@ -236,17 +266,10 @@ ax.set_ylabel('Loss')
 ax.set_title('Evolution of Losses over Training')
 
 # Plotting DICE score
-ax_DICE = axs[1]
-ax_DICE.plot(plt_epochs, test_DICEs, '.-')
-ax_DICE.set_ylabel('DICE Score')
-ax_DICE.set_xlabel('Epoch Number')
-ax_DICE.set_title('Evaluation Metrics over Training')
-
-# Plotting accuracy
-ax_acc = ax_DICE.twinx()
-ax_acc.plot(plt_epochs, test_accs, 'r.-')
-ax_acc.set_ylabel(r'Model Accuracy [\%]', color='r')
-ax_acc.tick_params(axis='y', color='r')
+ax_DICE = ax.twinx()
+ax_DICE.plot(plt_epochs, test_DICEs, 'r.--')
+ax_DICE.set_ylabel('DICE Score', color='r')
+ax_DICE.tick_params(axis='y', color='r')
 
 # Formatting
 plt.show()
