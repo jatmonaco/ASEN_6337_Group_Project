@@ -60,9 +60,11 @@ valid_keys = label_keys.loc[~label_keys.index.isin(training_keys.index)]
 print(f'Using {frac_training * 100:.0f}% of data for training...')
 
 # --- Setting up training data --- #
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")   # Device for data and model
 batch_sz = 8                                        # How many images to consider per batch
 train_dataset = kh.CloudDataset_PCA(training_keys,
-                                    img_paths=f'{kpath}/train_images')
+                                    img_paths=f'{kpath}/train_images',
+                                    device=device)
 train_loader = DataLoader(train_dataset,
                           batch_size=batch_sz,
                           shuffle=True)
@@ -70,7 +72,8 @@ print(f'Training data divided in to {len(train_loader)} batches of {batch_sz} im
 
 # --- Setting up validation data --- #
 valid_dataset = kh.CloudDataset_PCA(valid_keys,
-                                    img_paths=f'{kpath}/train_images')
+                                    img_paths=f'{kpath}/train_images',
+                                    device=device)
 valid_loader = DataLoader(valid_dataset,
                           batch_size=batch_sz)
 
@@ -114,10 +117,6 @@ class CloudClassr(nn.Module):
         x = torch.sigmoid(self.final_conv(x))
         return x.squeeze()
 
-
-# Device for data and model
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Creating an instance of the model on the target device
 model = CloudClassr()
@@ -183,11 +182,11 @@ for epoch in tqdm.trange(epochs, desc='Epochs: '):
             model.eval()    # set model to evaluation mode
 
             # Forward pass
-            X_test = torch.Tensor(data).float().permute(0, 3, 1, 2).to(device)
+            X_test = data
             test_pred = model(X_test)
 
             # Calculate loss (accumulatively)
-            test_truth = torch.Tensor(target).float().to(device)
+            test_truth = target
             epoch_loss += criterion(test_pred, test_truth)
 
             # Calculate accuracy

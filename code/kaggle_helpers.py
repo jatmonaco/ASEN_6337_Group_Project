@@ -124,12 +124,14 @@ class CloudDataset_PCA(Dataset):
     def __init__(
         self,
         df: pd.DataFrame = None,
-        img_paths: str = './understanding_cloud_organization/train_imgs'
+        img_paths: str = './understanding_cloud_organization/train_imgs',
+        device: str = 'cuda'
     ):
         self.df = df
         self.labels = ['Sugar', 'Flower', 'Gravel', 'Fish']
         self.data_folder = img_paths
         self.labels = ['Sugar', 'Flower', 'Gravel', 'Fish']
+        self.device = device
 
     def __getitem__(self, idx):
         img_df = self.df.iloc[idx]
@@ -149,13 +151,21 @@ class CloudDataset_PCA(Dataset):
         img_PCA = np.reshape(img_PCA, (ht, wd, 1))
         img_PCA = norm_matrix(img_PCA)
 
+        # Sending the image to the GPU for downsizing
+        img_PCA = torch.Tensor(img_PCA).float().to(self.device)
+        img_PCA = img_PCA.permute(2, 0, 1)
+
         # Getting mask of this label
         masks = []
         for label in self.labels:
             rle = img_df[f'{label}']
             mask = rle2mask(rle, shape=(ht, wd))
             masks.append(mask)
-        return img_PCA, np.array(masks)
+        masks = np.array(masks)
+
+        # Sending masks to GPU
+        masks = torch.Tensor(masks).float().to(self.device)
+        return img_PCA, masks
 
     def __len__(self):
         return len(self.df)
