@@ -219,7 +219,7 @@ for epoch in tqdm.trange(epochs, desc='Epochs: '):
 
 # %% --- Saving the model --- #
 torch.save(obj=model.state_dict(),
-           f='cloudClassr_allclass_downscaled_v1.pth')
+           f='cloudClassr_allclass_downscaled_v2.pth')
 
 # %% Checking outputs of model for last batch ran as a gut check
 fig, axs = plt.subplots(3, 4, figsize=(7.5, 5), layout='constrained')

@@ -14,6 +14,7 @@ plt.rcParams['text.usetex'] = True
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = 'cm'
 import seaborn as sns
+import matplotlib.gridspec as GS
 
 # system tools
 import tqdm
@@ -93,7 +94,7 @@ class CloudClassr(nn.Module):
 # Creating an instance of the model on the target device
 model_params = './cloudClassr_allclass_downscaled_v1.pth'
 model = CloudClassr()
-model.load_state_dict(torch.load(model_params, weights_only=True))
+model.load_state_dict(torch.load(model_params))
 model.to(device)
 
 # %% evaluating the model
@@ -178,4 +179,89 @@ axs[0, 0].set_ylabel('Raw Logits')
 axs[1, 0].set_ylabel('Predicted Masks')
 axs[2, 0].set_ylabel('Truth Masks')
 fig.suptitle('Distribution of Masks and Logits for Final Batch')
+plt.show()
+
+# %% Looking at logits and masks
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+# --- Getting an image --- #
+img_num = np.random.randint(0, batch_sz)
+img_PCA = X_test.cpu().numpy()[img_num, 0, :, :]
+img_mask = test_truth[img_num, :, :, :]
+img_pred = pred_normald[img_num, :, :, :]
+img_logits = pred_np[img_num, :, :, :]
+
+# --- Setting up axes --- #
+fig, axs = plt.subplots(2, 6, figsize=(12, 4), layout='constrained')
+gs = axs[0, 3].get_gridspec()
+for ax in axs[:, 2:4].ravel():
+    ax.remove()
+ax_logit = axs[:, 0:2]
+ax_PCA = axs[:, 4:]
+class_names = ['Fish', 'Flower', 'Gravel', 'Sugar']
+colors = ['c', 'm', 'y', 'g']
+
+# --- Plotting the image --- #
+ax = fig.add_subplot(gs[:, 2:4])
+ax.imshow(img_PCA, cmap='gray')
+# Plotting masks
+for class_num, (class_name, color) in enumerate(zip(class_names, colors)):
+    mask_img = img_mask[class_num, :, :]
+    ax.contour(mask_img, colors=color, linewidths=0.3)
+    ax.imshow(mask_img, alpha=mask_img * 0.25, cmap='gray')
+# Formatting
+ax.set_yticklabels([])
+ax.set_xticklabels([])
+ax.set_xticks([])
+ax.set_yticks([])
+ax.set_title('PCA and Truth Masks')
+
+# --- Plotting the logits --- #
+for class_num, (ax, class_name, color) in enumerate(zip(ax_logit.ravel(), class_names, colors)):
+    # Plotting logits
+    pred = img_logits[class_num, :, :]
+    im = ax.imshow(pred)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes('bottom', size='5%', pad=0.05)
+    fig.colorbar(im, cax=cax, orientation='horizontal', shrink=0.1)
+
+    # Plotting predicted masks
+    mask_img = img_pred[class_num, :, :]
+    ax.contour(mask_img, colors='r', linewidths=0.1, alpha=0.5)
+    ax.imshow(mask_img, alpha=mask_img * 0.3, cmap='gray')
+
+    # Plotting truth masks
+    mask_img = img_mask[class_num, :, :]
+    ax.contour(mask_img, colors=color, linewidths=0.5)
+    ax.imshow(mask_img, alpha=mask_img * 0.3, cmap='gray')
+
+    # Formatting
+    ax.set_yticklabels([])
+    ax.set_xticklabels([])
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_title(f'{class_name} Logits and Mask')
+
+
+# --- Masks on real image --- #
+for class_num, (ax, class_name, color) in enumerate(zip(ax_PCA.ravel(), class_names, colors)):
+    # Plotting logits
+    im = ax.imshow(img_PCA, cmap='gray')
+
+    # Plotting predicted masks
+    mask_img = img_pred[class_num, :, :]
+    ax.contour(mask_img, colors='r', linewidths=0.1, alpha=0.5)
+    ax.imshow(mask_img, alpha=mask_img * 0.3, cmap='gray')
+
+    # Plotting truth masks
+    mask_img = img_mask[class_num, :, :]
+    ax.contour(mask_img, colors=color, linewidths=0.5)
+    ax.imshow(mask_img, alpha=mask_img * 0.3, cmap='gray')
+
+    # Formatting
+    ax.set_yticklabels([])
+    ax.set_xticklabels([])
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_title(f'{class_name} Mask on PCA')
 plt.show()
