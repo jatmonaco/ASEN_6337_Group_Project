@@ -10,7 +10,6 @@ Created on Wed Nov  6 16:09:11 2024
 
 # Analysis
 import numpy as np
-import pandas as pd
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 
@@ -21,7 +20,7 @@ from matplotlib.pyplot import savefig
 plt.rcParams['text.usetex'] = True
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = 'cm'
-from matplotlib.pyplot import savefig
+from matplotlib.colors import ListedColormap
 
 import kaggle_helpers as kh
 import pickle
@@ -76,7 +75,8 @@ for class_name, color in zip(class_names, colors):
     mask_rle = img_df[f'{class_name}']
     mask_img = kh.rle2mask(mask_rle)
     ax.contour(mask_img, colors=color, linewidths=0.3)
-    ax.imshow(mask_img, alpha=mask_img * 0.25, cmap='gray')
+    cmap = ListedColormap(['w', color])
+    ax.imshow(mask_img, alpha=mask_img * 0.1, cmap=cmap)
 # Formatting
 ax.set_yticklabels([])
 ax.set_xticklabels([])
@@ -92,7 +92,8 @@ for class_name, color in zip(class_names, colors):
     mask_rle = img_df[f'{class_name}']
     mask_img = kh.rle2mask(mask_rle)
     ax.contour(mask_img, colors=color, linewidths=0.3)
-    ax.imshow(mask_img, alpha=mask_img * 0.25, cmap='gray')
+    cmap = ListedColormap(['w', color])
+    ax.imshow(mask_img, alpha=mask_img * 0.1, cmap=cmap)
 # Formatting
 ax.set_yticklabels([])
 ax.set_xticklabels([])
@@ -109,7 +110,8 @@ for col in range(n_clrs):
         mask_rle = img_df[f'{class_name}']
         mask_img = kh.rle2mask(mask_rle)
         ax.contour(mask_img, colors=color, linewidths=0.3)
-        ax.imshow(mask_img, alpha=mask_img * 0.25, cmap='gray')
+        cmap = ListedColormap(['w', color])
+        ax.imshow(mask_img, alpha=mask_img * 0.1, cmap=cmap)
     # Formatting
     ax.set_yticklabels([])
     ax.set_xticklabels([])

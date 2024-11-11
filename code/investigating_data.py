@@ -17,7 +17,7 @@ plt.rcParams['text.usetex'] = True
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = 'cm'
 import pickle
-
+from matplotlib.colors import ListedColormap
 
 # %% Getting data
 path = './understanding_cloud_organization'
@@ -87,7 +87,8 @@ for class_name, ax, color in zip(class_names, axs.flatten(), colors):
     mask_rle = single_label_img[f'{class_name}']
     mask_img = kh.rle2mask(mask_rle)
     ax.contour(mask_img, colors=color)
-    ax.imshow(mask_img, alpha=mask_img * 0.5, cmap='gray')
+    cmap = ListedColormap(['w', color])
+    ax.imshow(mask_img, alpha=mask_img * 0.25, cmap=cmap)
 
     # Formatting
     ax.set_yticklabels([])
@@ -114,7 +115,8 @@ for class_name, color in zip(class_names, colors):
     mask_rle = all_label_img[f'{class_name}']
     mask_img = kh.rle2mask(mask_rle)
     ax.contour(mask_img, colors=color)
-    ax.imshow(mask_img, alpha=mask_img * 0.25, cmap='gray')
+    cmap = ListedColormap(['w', color])
+    ax.imshow(mask_img, alpha=mask_img * 0.25, cmap=cmap)
 
 # Formatting
 ax.set_yticklabels([])

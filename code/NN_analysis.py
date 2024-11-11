@@ -15,6 +15,8 @@ plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = 'cm'
 import seaborn as sns
 import matplotlib.gridspec as GS
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from matplotlib.colors import ListedColormap
 
 # system tools
 import tqdm
@@ -182,7 +184,6 @@ fig.suptitle('Distribution of Masks and Logits for Final Batch')
 plt.show()
 
 # %% Looking at logits and masks
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # --- Getting an image --- #
 img_num = np.random.randint(0, batch_sz)
@@ -208,7 +209,8 @@ ax.imshow(img_PCA, cmap='gray')
 for class_num, (class_name, color) in enumerate(zip(class_names, colors)):
     mask_img = img_mask[class_num, :, :]
     ax.contour(mask_img, colors=color, linewidths=0.3)
-    ax.imshow(mask_img, alpha=mask_img * 0.25, cmap='gray')
+    cmap = ListedColormap(['w', color])
+    ax.imshow(mask_img, alpha=mask_img * 0.2, cmap=cmap)
 # Formatting
 ax.set_yticklabels([])
 ax.set_xticklabels([])
@@ -228,12 +230,14 @@ for class_num, (ax, class_name, color) in enumerate(zip(ax_logit.ravel(), class_
     # Plotting predicted masks
     mask_img = img_pred[class_num, :, :]
     ax.contour(mask_img, colors='r', linewidths=0.1, alpha=0.5)
-    ax.imshow(mask_img, alpha=mask_img * 0.3, cmap='gray')
+    cmap = ListedColormap(['w', 'r'])
+    ax.imshow(mask_img, alpha=mask_img * 0.2, cmap=cmap)
 
     # Plotting truth masks
     mask_img = img_mask[class_num, :, :]
     ax.contour(mask_img, colors=color, linewidths=0.5)
-    ax.imshow(mask_img, alpha=mask_img * 0.3, cmap='gray')
+    cmap = ListedColormap(['w', color])
+    ax.imshow(mask_img, alpha=mask_img * 0.2, cmap=cmap)
 
     # Formatting
     ax.set_yticklabels([])
@@ -251,12 +255,14 @@ for class_num, (ax, class_name, color) in enumerate(zip(ax_PCA.ravel(), class_na
     # Plotting predicted masks
     mask_img = img_pred[class_num, :, :]
     ax.contour(mask_img, colors='r', linewidths=0.1, alpha=0.5)
-    ax.imshow(mask_img, alpha=mask_img * 0.3, cmap='gray')
+    cmap = ListedColormap(['w', 'r'])
+    ax.imshow(mask_img, alpha=mask_img * 0.2, cmap=cmap)
 
     # Plotting truth masks
     mask_img = img_mask[class_num, :, :]
     ax.contour(mask_img, colors=color, linewidths=0.5)
-    ax.imshow(mask_img, alpha=mask_img * 0.3, cmap='gray')
+    cmap = ListedColormap(['w', color])
+    ax.imshow(mask_img, alpha=mask_img * 0.15, cmap=cmap)
 
     # Formatting
     ax.set_yticklabels([])

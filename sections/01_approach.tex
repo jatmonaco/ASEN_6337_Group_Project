@@ -37,3 +37,9 @@ With so many hyperparameters to change, it's important for a single model to be 
 
 Because the images are simply clouds over water, three image channels seemed egregious when a single channel could more concisely capture the cloud/water contrast. We decided to further reduce the three-channel image to a single channel via principal component analysis (PCA). We tried other reduction methods such as K-means, but found glare over water and clouds were often classed similarly, even when a high number of groups were used. After the images underwent PCA then down sampling, simple CNNs had a training epoch time of just \(\sim25\) minutes. \Cref{fig:PCA} shows an example of K-means and PCA applied to one of the full-resolution images. 
 
+\subsection{Additional Ideas}
+\begin{itemize}
+    \item Additional training data via augmentations 
+    \item Playing around with the threshold of logits to convert them into masks 
+    \item enforce minimum mask sizes 
+\end{itemize}
