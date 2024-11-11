@@ -130,7 +130,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)   # Gradient optimizer
 #                             lr=0.1)
 
 # --- Training --- #
-epochs = 10              # Number of training epochs
+epochs = 8              # Number of training epochs
 print(f'Training NN with {epochs} epochs...')
 
 # Losses and accuracies to plot for each epoch

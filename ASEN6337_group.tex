@@ -26,7 +26,7 @@
 \begin{document}
 \maketitle
 \begin{abstract}
-    \textbf{Abstract}: \textit{A concise (200 words or fewer) summary of the paper.} \lipsum[1]
+    \textbf{Abstract}: An efficient way to classify different types of clouds in satellite images may give insight into the Earth's atmosphere and radiation budget. Towards this end, the Max Planck Institute for Meteorology hosted an open \textit{Kaggle} competition to build the best cloud classification model. The institute provided a suite of testing images, labeled training images, and a description of the metrics that each entry would be evaluated on. This work details the development of a convolutional neural network-based classifier that achieves a Dice coefficient of XXX. 
 \end{abstract}
 \tableofcontents
 \newpage
@@ -44,11 +44,21 @@
 % --- Code and Such --- % 
 \appendix
 \section{Code Used}
-\subsection*{Helper Functions}
+\subsection{Helper Functions}
 \inputminted{python}{code/kaggle_helpers.py}  
 \newpage
 %
-\subsection*{Plotting masks and Images}
+\subsection{Plotting masks and Images}
+A file to get to know the data, transform the data into a more usable format, and display some images and masks. This script was used to create \cref{fig:all_labels,fig:labeled_imgs}. 
 \inputminted{python3}{code/investigating_data.py}  
+\newpage 
+\subsection{Data Reduction}
+Showing K-means and PCA. This script was used to create \cref{fig:PCA}. 
+\inputminted{python3}{code/pca_testing.py}  
+\newpage 
+\subsection{Training CNN}
+\inputminted{python}{code/cloud_classr_scaled.py}
+\newpage
+\subsection{Evaluating CNN}
+\inputminted{python}{code/NN_analysis.py}
 \end{document}
- 
