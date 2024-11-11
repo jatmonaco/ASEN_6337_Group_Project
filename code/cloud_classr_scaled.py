@@ -26,6 +26,7 @@ plt.rcParams['text.usetex'] = True
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = 'cm'
 import seaborn as sns
+from matplotlib.pyplot import savefig
 
 # %% Loading in the image data
 print('Loading in the training data...')
@@ -252,6 +253,7 @@ axs[1, 0].set_ylabel('Predicted Masks')
 axs[2, 0].set_ylabel('Truth Masks')
 fig.suptitle('Distribution of Masks and Logits for Final Batch')
 plt.show()
+savefig('../figs/batch_hist.pdf', bbox_inches='tight', dpi=600)
 
 # %% Plotting metrics over the course of training
 fig, ax = plt.subplots(1, 1, figsize=(8, 4), layout='constrained')
@@ -273,3 +275,4 @@ ax_DICE.tick_params(axis='y', color='r')
 
 # Formatting
 plt.show()
+savefig('../figs/training_progression.pdf', bbox_inches='tight', dpi=600)

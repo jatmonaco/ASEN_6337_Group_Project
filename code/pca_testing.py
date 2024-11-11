@@ -21,27 +21,29 @@ from matplotlib.pyplot import savefig
 plt.rcParams['text.usetex'] = True
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = 'cm'
+from matplotlib.pyplot import savefig
 
 import kaggle_helpers as kh
+import pickle
 
 # %% Getting data
+print('Loading in the training data...')
 kpath = './understanding_cloud_organization'  # path to images
 
-# Mask dataframe in better format
-label_keys = pd.read_csv('better_df.csv',
-                         converters={'Fish': kh.str2intarr,
-                                     'Flower': kh.str2intarr,
-                                     'Gravel': kh.str2intarr,
-                                     'Sugar': kh.str2intarr})
-class_names = ['Fish', 'Flower', 'Gravel', 'Sugar']
+# Opening the better df pkl located in the same directory as this file
+with open('better_df.pkl', 'rb') as f:
+    label_keys = pickle.load(f)
 
-# Getting info about pictures by investigating a random image
-img_df = label_keys.sample(1).iloc[0]
+# %% Investigating a random image
+print('Selecting a random image with all 4 masks...')
+class_names = ['Fish', 'Flower', 'Gravel', 'Sugar']
+img_df = label_keys[label_keys.num_labels == len(class_names)].sample(1).iloc[0]
 img = kh.get_img(img_df.im_id, kpath)
 ht, wd, n_clrs = img.shape  # height and width of the images
 N_px = int(ht * wd)         # Number of pixels per image
 
 # %% Trying out PCA on the images
+print('Applying PCA...')
 X = img.reshape(-1, n_clrs)
 pca = PCA(n_components=n_clrs)
 pca.fit(X)
@@ -50,13 +52,15 @@ img_PCA = np.reshape(img_PCA, (ht, wd, n_clrs))
 img_PCA = kh.norm_matrix(img_PCA)
 
 # %% Trying out k-means on the image
+print('Applying K-Means...')
 K = 4
 kmeans = KMeans(n_clusters=K).fit(X)
 kmeans_labels = kmeans.predict(X)
 img_kmeans = np.reshape(kmeans_labels, (ht, wd))
 
 # %% Showing images side-by-side
-fig = plt.figure(figsize=(7, 4), layout='constrained')
+print('Plotting...')
+fig = plt.figure(figsize=(7.5, 4), layout='constrained')
 gs = GS.GridSpec(2, 1, figure=fig)
 top_gs = GS.GridSpecFromSubplotSpec(1, 2, subplot_spec=gs[0, 0],
                                     hspace=0)
@@ -99,7 +103,7 @@ ax.set_title(f'K-Means (K={K:.0f})')
 # --- Plotting PCA --- #
 for col in range(n_clrs):
     ax = fig.add_subplot(bottom_gs[0, col])
-    ax.imshow(img_PCA[:, :, col])
+    ax.imshow(img_PCA[:, :, col], cmap='gray')
     # Plotting masks
     for class_name, color in zip(class_names, colors):
         mask_rle = img_df[f'{class_name}']

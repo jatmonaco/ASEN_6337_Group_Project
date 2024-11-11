@@ -13,7 +13,7 @@ The organizers asked the competitors to build a model that could distinguish bet
 
 Each team competing used the labeled training images to create some classification model with the ability to classify regions in new images, outputting creates a similar label map to the training labels provided. Each team is evaluated by applying their model to the test images and submitting a down-scaled label map to the Kaggle portal, at which point a DICE score is calculated as a proxy for performance (see \cref{eval}). The organizers reward the models with the best DICE score as the winner. 
 
-\subsection*{Training Images}
+\subsection{Training Images}
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\linewidth]{figs/single_labels.pdf}
@@ -31,7 +31,9 @@ Each team competing used the labeled training images to create some classificati
     Fish   & 2,781       \\
     Flower & 2,365      
     \end{tabular}
+    %
     \quad
+    %
     \begin{tabular}{@{}c|c@{}}
     \toprule
     \begin{tabular}[c]{@{}c@{}}Number of\\ Classes Present\end{tabular} & \begin{tabular}[c]{@{}c@{}}Count of \\ Images\end{tabular} \\ \midrule
@@ -46,9 +48,9 @@ Each team competing used the labeled training images to create some classificati
 %
 There are 5,546 training images provided, all of which depict clouds over water. Each image has some number of labeled regions of the four types of labels. \Cref{fig:all_labels} shows a rare training image with all types of clouds present, while \cref{fig:labeled_imgs} shows training images with only one class present in each image. 
 
-A given image could contain any number of labeled regions belonging to each class, ranging from images with regions belonging to all four classes, to images with zero labeled regions. A summary of the number of classes per image is shown in \cref{tab:class_ct}.
+A given image could contain any number of labeled regions belonging to each class, ranging from images with regions belonging to all four classes, to images with zero labeled regions. A summary of the number of classes per image is shown in \cref{tab:class_ct}. For speed and usability, the training \texttt{.csv} was checked and corrected for bad data, then put into a more convenient \texttt{pandas} DataFrame. 
 
-\subsection*{Label Format}
+\subsection{Label Format}
 The training labels are provided by the file \texttt{train.csv}, with four rows populated for each image. The first column specifies the image and the class, and the second column specifies the list of encoded pixels through run-length encoding (RLE). An example is shown in the table \cref{tab:RLE_ex}.
 %
 \begin{table}[h!]
@@ -66,7 +68,7 @@ The training labels are provided by the file \texttt{train.csv}, with four rows 
 
 The RLE format references the one-indexed raveled pixel locations, starting from top to bottom and left to right. This means that the pixel \(1\) corresponds to the top-left corner, \((1,1)\), pixel \(2\) corresponds to the pixel to below pixel 1 at \((2, 1)\), etc. For each class within an image, the runs are listed in ascending order of the starting pixel. 
 % 
-\subsection*{Unlabeled Images and Evaluation} \label{eval}
+\subsection{Unlabeled Images and Evaluation} \label{eval}
 There are 3,698 test images of the same resolution without labels. These test images are unlabeled and are only used to evaluate the classification model using the Dice (\(DSC\)) coefficient: 
 %
 \begin{equation*}

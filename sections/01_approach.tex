@@ -1,32 +1,39 @@
 \section{Approach and Methodology}
-\textit{This is where you should describe the data analysis approach. Formulate your remote sensing data analysis problem using methods and concepts you learned in the class. }
-
 This is a multi-class classification problem with many labeled training examples where the form of the class distributions are not known. This makes supervised discriminative classifiers the most appropriate family of tools. While tree-based methods and support vector machines are viable options, convolutional neural networks (CNNs) are the obvious tool for image-based classification.
 
-\subsection*{Learning from Previous Submissions}
+\subsection{Learning from Previous Submissions}
 Our group did not have expertise in designing and training CNNs before this project. Fortunately, the competition's \textit{Kaggle} community was extremely collaborative and communicative in nature, with many top submissions publishing and discussing their solutions in detail for others to reproduce their results. We began by exploring existing solutions to get an idea of the tools that others found useful and to better understand a variety of approaches used. 
 
 A big takeaway from exploring \textit{Kaggle} was that the Python-based \texttt{pytorch} was clearly the most popular machine learning framework used among submissions, and we decided to develop a \texttt{pytorch}-based solution as well. We also incorporated helper functions that have seemed to have been widely disseminated among solutions; any functions copied from \textit{Kaggle} include a link to the submission from which it was taken. 
 
-\subsection*{Neural Network Architecture}
-The input of the CNN has to take in the two-dimensional images. A single pixel can be a member to multiple classes, so a single mask that outputs one assignment per pixel is not sufficient; the CNN must output four two-dimensional masks the same size as the input. Our initial approach involved four different networks, each specializing in one class, but that risked missing between-class correlations. 
+\subsection{Neural Network Architecture}
+The input of the CNN has to take in the two-dimensional images. A single pixel can be a member to multiple classes, so a single mask that outputs one assignment per pixel is not sufficient. Our initial approach involved four different networks, each specializing in one class, but that idea would be blind to between-class correlations. We ultimately developed a single CNN that takes in an image and outputs four 2D binary masks, one for each class. 
 
-Another choice in architecture are the CNN's optimizer and loss function during training. 
+A variety of design choices were explored when developing the CNN. The most significant design choices involved the architecture of the network, which includes: 
+\begin{itemize}
+    \item The number of hidden layers.
+    \item The number of fully-connected layers, the number of neurons per fully connected layer, and the choice of activation functions.
+    \item The number and kernel size of convolution layers.
+    \item The number, method, and kernel size of pooling layers.
+    \item The order of layers and ways they are connected.
+\end{itemize}
+Additionally, there are a variety of design choices to make about how the network is trained, including: 
+\begin{itemize}
+    \item The type of optimizer and its learning rate.
+    \item The loss function. An appropriate loss function should be chosen that matches the type of classification being performed; a binary class problem and an exclusive multiclass problem can utilize different information through different loss functions. 
+    \item The number of images to include in a training batch. Because of hardware memory constraints, the training and evaluation data are divided into batches of a certain size, with training and optimization occurring over each batch. A single epoch is completed when all batches are used for training once. 
+    \item The number of epochs to train over. This is subjective, it is usually sufficient to continue training until the training loss, validation loss, and the DICE evaluation metric converge. 
+\end{itemize}
 
-Additionally, the number of fully-connected layers and neurons per layer, convolution layers and their kernel sizes, pooling layers and their pooling sizes and methods, and the ways layers are connected are all design choices of the network. 
+\subsection{Image Pre-Processing}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=7.5in]{figs/data_redux.pdf}
+    \caption{Comparing K-means (top right) and PCA (bottom row) applied to the original full-resolution image containing all four classes (top left). From left to right, the PCA channels are listed from greatest to least eigenvalues.}
+    \label{fig:PCA}
+\end{figure}
+%
+With so many hyperparameters to change, it's important for a single model to be trained and evaluated in a reasonable amount of time. The images are relatively large, at \(1400 \times 2100\) pixels per RGB channel. When using the full-channel, full-resolution images as inputs, we found a single training epoch took over 3 hours to complete for even simple CNNs. Most competition entries took a few dozen epochs to complete training, which makes rapid model development infeasible with the full-resolution images. Fortunately, the competition is evaluated on masks of images that are down sampled by a factor of four in each dimension. To decrease training time, we decided to down sample the training images and masks similarly. All masks and images are then zero-padded after down sampling to ensure they are compatible with the kernel sizes used in the neural network. 
 
-\subsection*{Image Pre-Processing}
-Another aspect to consider is what the inputs are to neural networks. The images are relatively large, at \(1400 \times 2100\) pixels per RGB channel. When using the full-channel, full-resolution images as inputs, we found a single training epoch took over 3 hours to complete for even simple CNNs. Most competition entries took a few dozen epochs to complete training, which makes rapid model development infeasible with the full-resolution images. Fortunately, the competition is evaluated on masks of images that are down sampled by a factor of four in each dimension. To decrease training time, we decided to down sample the training images and masks similarly.
+Because the images are simply clouds over water, three image channels seemed egregious when a single channel could more concisely capture the cloud/water contrast. We decided to further reduce the three-channel image to a single channel via principal component analysis (PCA). We tried other reduction methods such as K-means, but found glare over water and clouds were often classed similarly, even when a high number of groups were used. After the images underwent PCA then down sampling, simple CNNs had a training epoch time of just \(\sim25\) minutes. \Cref{fig:PCA} shows an example of K-means and PCA applied to one of the full-resolution images. 
 
-Because the images were simply clouds over water, three image channels seemed egregious when a single channel could more concisely capture the cloud/water contrast. We decided to further reduce the three-channel image to a single channel via PCA. We tried for reduce via K-means as well, but found it often classified glare and clouds similarly, even when a high number of groups were used. After the images underwent PCA then down sampling, simple CNNs had a training epoch time of just \(\sim25\) minutes. 
-
-% \subsection{Our First Approach: Divide and Concur}
-% As a first step towards a solution, and because of the overlapping nature of the labels, we decided to start off by creating a different classifier for each class; i.e., a sugar classifier, a gravel classifier, a flower classifier, and a fish classifier. Each member of the team was assigned a class and created a classifier on their own using \texttt{pytorch} as the neural network tool set. This allowed us to get to know these new tools and data, come up with ideas on our own, and reconvene afterwards to see if there was any convergent thinking or useful tips before synthesizing a more general model. 
-% %
-% \input{sections/01a_JM.tex}
-% \subsection{Other Ideas Considered}
-% Additional ideas include: 
-% \begin{itemize}
-%     \item Creating additional synthetic training images by applying different combinations of affine transformations on the supplied training images (rotating, mirroring, stretching, wrapping). 
-%     \item Creating a dedicated model to create labels for each class (4 models total).
-% \end{itemize}
