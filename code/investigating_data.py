@@ -31,7 +31,6 @@ print(f'{N_labeled} training images and {N_test} test images available')
 # %% Getting label_keys
 with open('train.pkl', 'rb') as f:
     label_keys = pickle.load(f)
-# label_keys = pd.read_csv(f'{path}/train.csv', index_col=False)
 label_keys['label'] = label_keys['Image_Label'].apply(lambda x: x.split('_')[1])
 label_keys['im_id'] = label_keys['Image_Label'].apply(lambda x: x.split('_')[0])
 class_names = label_keys['label'].unique()   # Name of all labels
