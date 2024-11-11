@@ -151,7 +151,8 @@ with torch.inference_mode():
     {epoch_DICE:.2f}.')
 
 # %% Checking outputs of model for last batch ran as a gut check
-fig, axs = plt.subplots(3, 4, figsize=(7.5, 5), layout='constrained')
+fig, axs = plt.subplots(3, 4, figsize=(12, 4.5), layout='constrained',
+                        sharey='row')
 
 for label_num, label in enumerate(train_dataset.labels):
     axs[0, label_num].set_title(label)  # Setting title
@@ -159,6 +160,7 @@ for label_num, label in enumerate(train_dataset.labels):
     # --- Histogram of raw logits --- #
     logits_1label = pred_np[:, label_num, :, :].flatten()
     sns.histplot(logits_1label, ax=axs[0, label_num], stat='density')
+    axs[0, label_num].set_yscale('log')
     axs[0, label_num].set_yticks([])
     axs[0, label_num].set_ylabel('')
 
@@ -180,7 +182,8 @@ for label_num, label in enumerate(train_dataset.labels):
 axs[0, 0].set_ylabel('Raw Logits')
 axs[1, 0].set_ylabel('Predicted Masks')
 axs[2, 0].set_ylabel('Truth Masks')
-fig.suptitle('Distribution of Masks and Logits for Final Batch')
+fig.suptitle('Distribution of Masks and Logits for A Single Batch')
+plt.savefig('../figs/logit_hist.pdf', dpi=400, bbox_inches='tight')
 plt.show()
 
 # %% Looking at logits and masks
@@ -193,7 +196,7 @@ img_pred = pred_normald[img_num, :, :, :]
 img_logits = pred_np[img_num, :, :, :]
 
 # --- Setting up axes --- #
-fig, axs = plt.subplots(2, 6, figsize=(12, 4), layout='constrained')
+fig, axs = plt.subplots(2, 6, figsize=(12, 3.5), layout='constrained')
 gs = axs[0, 3].get_gridspec()
 for ax in axs[:, 2:4].ravel():
     ax.remove()
@@ -229,7 +232,7 @@ for class_num, (ax, class_name, color) in enumerate(zip(ax_logit.ravel(), class_
 
     # Plotting predicted masks
     mask_img = img_pred[class_num, :, :]
-    ax.contour(mask_img, colors='r', linewidths=0.1, alpha=0.5)
+    ax.contour(mask_img, colors='r', linewidths=0.05, alpha=0.5)
     cmap = ListedColormap(['w', 'r'])
     ax.imshow(mask_img, alpha=mask_img * 0.2, cmap=cmap)
 
@@ -270,4 +273,5 @@ for class_num, (ax, class_name, color) in enumerate(zip(ax_PCA.ravel(), class_na
     ax.set_xticks([])
     ax.set_yticks([])
     ax.set_title(f'{class_name} Mask on PCA')
+plt.savefig('../figs/mask_example.pdf', bbox_inches='tight', dpi=400)
 plt.show()
