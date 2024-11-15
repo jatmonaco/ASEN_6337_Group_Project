@@ -61,6 +61,7 @@ model = torch.jit.load(model_path)
 model.to(device)
 
 # %% evaluating the model
+thresholds = [0.48, 0.52, 0.48, 0.43]  # thresholds for raw logits, found by iterating over and selected highest avg DICE
 
 # --- Loss functions and gradient descent optimizer --- #
 criterion = nn.BCELoss()                                    # Loss function for binary class data
@@ -82,20 +83,11 @@ with torch.inference_mode():
 
         # Normalizing the predicted masks
         pred_np = test_pred.cpu().numpy()           # Convert raw logits to numpy array
-        #pred_maxs = np.max(pred_np, axis=(2, 3),    # Max of each max for each image
-                           #keepdims=True)
-        #pred_mins = np.min(pred_np, axis=(2, 3),    # min of each max for each image
-                           #keepdims=True)
-        # If any max's are 0 (no labeled data for that labal and image), then max should be set to 1 to avoid divide by 0
-        #pred_maxs = np.where(pred_maxs == 0, 1, pred_maxs)
-        #pred_normald = (pred_np - pred_mins) / (pred_maxs - pred_mins)  # Normalizing between 0 and 1
-        #pred_normald = np.round(pred_normald)                           # Rounding to get predicted masks
 
         # Convert logits to mask values using thresholds
-        thresholds = [0.14, 0.23, 0.18, 0.22] #thresholds for raw logits, found by iterating over and selected highest avg DICE
-        pred_np_converted = pred_np
+        pred_np_converted = np.copy(pred_np)
         for classnum, threshold in enumerate(thresholds):
-            pred_np_converted[:,classnum,:,:] = np.where(pred_np[:,classnum, :,:] > threshold, 1, 0)
+            pred_np_converted[:, classnum, :, :] = np.where(pred_np_converted[:, classnum, :, :] > threshold, 1, 0)
         test_truth = test_truth.cpu().numpy()       # Convert truth to numpy array
 
         # Calculate DICE score
@@ -124,7 +116,6 @@ for label_num, label in enumerate(train_dataset.labels):
     # --- Histogram of raw logits --- #
     logits_1label = pred_np[:, label_num, :, :].flatten()
     sns.histplot(logits_1label, ax=axs[0, label_num], stat='density')
-    axs[0, label_num].set_yscale('log')
     axs[0, label_num].set_yticks([])
     axs[0, label_num].set_ylabel('')
 
@@ -146,7 +137,7 @@ for label_num, label in enumerate(train_dataset.labels):
 axs[0, 0].set_ylabel('Raw Logits')
 axs[1, 0].set_ylabel('Predicted Masks')
 axs[2, 0].set_ylabel('Truth Masks')
-fig.suptitle('Distribution of Masks and Logits for A Single Batch')
+fig.suptitle(f'Distribution of Masks and Logits for A Single Batch\nDICE={batch_DICE:.2f}')
 plt.savefig('../figs/logit_hist.pdf', dpi=400, bbox_inches='tight')
 plt.show()
 
