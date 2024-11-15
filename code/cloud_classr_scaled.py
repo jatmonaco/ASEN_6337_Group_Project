@@ -47,9 +47,13 @@ ht, wd, n_clrs = rand_img.shape  # dimentionality of the images
 
 # %% Separating out training and validation data
 print('Creating training and validation datasets...')
+
+# --- Setting seeds --- #
+torch.manual_seed(0)    # Pytorch seeds
+
 frac_training = 0.9                                 # Fraction of images to choose for training
 num_training = int(N_labeled * frac_training)       # Number of images for training
-training_keys = label_keys.sample(num_training)     # Random images for training
+training_keys = label_keys.sample(num_training, random_state=0)     # Random images for training
 valid_keys = label_keys.loc[~label_keys.index.isin(training_keys.index)]    # Rest of the images for validation
 print(f'Using {frac_training * 100:.0f}% of data for training...')
 
@@ -218,8 +222,8 @@ for epoch in tqdm.trange(epochs, desc='Epochs: '):
     {epoch_DICE:.2f}.')
 
 # %% --- Saving the model --- #
-torch.save(obj=model.state_dict(),
-           f='cloudClassr_allclass_downscaled_v2.pth')
+torch.save(obj=model,
+           f='cloudClassr_model_v2.pth')
 
 # %% Checking outputs of model for last batch ran as a gut check
 fig, axs = plt.subplots(3, 4, figsize=(7.5, 5), layout='constrained')

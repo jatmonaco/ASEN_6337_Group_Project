@@ -50,54 +50,11 @@ train_loader = DataLoader(train_dataset,
                           batch_size=batch_sz)
 
 # %% Building model
-'''
-This should contain the exact NN model that was trained. 
-'''
-print('Creating NN model...')
-
-
-class CloudClassr(nn.Module):
-    '''
-    Takes in 1 channel PCA'd image, and outputs masks for all four classes. 
-    '''
-
-    def __init__(self):
-        super(CloudClassr, self).__init__()
-
-        # Encoder: Downsampling with convolutions and max-pooling
-        self.enc1 = nn.Conv2d(1, 16, kernel_size=3, padding=1)
-        self.enc2 = nn.Conv2d(16, 32, kernel_size=3, padding=1)
-        self.enc3 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
-
-        # Decoder: Upsampling with transposed convolutions
-        self.up1 = nn.ConvTranspose2d(64, 32, kernel_size=2, stride=2)
-        self.up2 = nn.ConvTranspose2d(32, 16, kernel_size=2, stride=2)
-        self.final_conv = nn.Conv2d(16, 4, kernel_size=1)  # Output layer for binary mask
-
-    def forward(self, x):
-        # Encoding (Downsampling)
-        x1 = F.relu(self.enc1(x))
-        x2 = F.max_pool2d(x1, 2)  # Down by factor of 2
-        x2 = F.relu(self.enc2(x2))
-        x3 = F.max_pool2d(x2, 2)  # Down by factor of 2
-        x3 = F.relu(self.enc3(x3))
-
-        # Decoding (Upsampling)
-        x = self.up1(x3)          # Up to 700x1050
-        x = F.relu(x + x2)        # Skip connection from encoder
-        x = self.up2(x)           # Up to 1400x2100
-        x = F.relu(x + x1)        # Skip connection from encoder
-
-        # Final 1x1 convolution to get binary segmentation output
-        x = torch.sigmoid(self.final_conv(x))
-        return x.squeeze()
-
+print('Loading NN model...')
 
 # Creating an instance of the model on the target device
-model_params = './cloudClassr_allclass_downscaled_v1.pth'
-model = CloudClassr()
-model.load_state_dict(torch.load(model_params))
-model.to(device)
+model_path = './cloudClassr_model_v2.pth'
+model = torch.load(model_path, weights_only=False)
 
 # %% evaluating the model
 
