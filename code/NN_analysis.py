@@ -17,6 +17,8 @@ import seaborn as sns
 import matplotlib.gridspec as GS
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.colors import ListedColormap
+import matplotlib
+matplotlib.rcParams.update(matplotlib.rcParamsDefault)
 
 # system tools
 import tqdm
@@ -80,20 +82,25 @@ with torch.inference_mode():
 
         # Normalizing the predicted masks
         pred_np = test_pred.cpu().numpy()           # Convert raw logits to numpy array
-        pred_maxs = np.max(pred_np, axis=(2, 3),    # Max of each max for each image
-                           keepdims=True)
-        pred_mins = np.min(pred_np, axis=(2, 3),    # min of each max for each image
-                           keepdims=True)
+        #pred_maxs = np.max(pred_np, axis=(2, 3),    # Max of each max for each image
+                           #keepdims=True)
+        #pred_mins = np.min(pred_np, axis=(2, 3),    # min of each max for each image
+                           #keepdims=True)
         # If any max's are 0 (no labeled data for that labal and image), then max should be set to 1 to avoid divide by 0
-        pred_maxs = np.where(pred_maxs == 0, 1, pred_maxs)
-        pred_normald = (pred_np - pred_mins) / (pred_maxs - pred_mins)  # Normalizing between 0 and 1
-        pred_normald = np.round(pred_normald)                           # Rounding to get predicted masks
+        #pred_maxs = np.where(pred_maxs == 0, 1, pred_maxs)
+        #pred_normald = (pred_np - pred_mins) / (pred_maxs - pred_mins)  # Normalizing between 0 and 1
+        #pred_normald = np.round(pred_normald)                           # Rounding to get predicted masks
 
+        # Convert logits to mask values using thresholds
+        thresholds = [0.14, 0.23, 0.18, 0.22] #thresholds for raw logits, found by iterating over and selected highest avg DICE
+        pred_np_converted = pred_np
+        for classnum, threshold in enumerate(thresholds):
+            pred_np_converted[:,classnum,:,:] = np.where(pred_np[:,classnum, :,:] > threshold, 1, 0)
         test_truth = test_truth.cpu().numpy()       # Convert truth to numpy array
 
         # Calculate DICE score
         batch_DICE = kh.dice(test_truth,
-                             pred_normald)
+                             pred_np_converted)
         data_iter.set_postfix({"DICE": batch_DICE})
         epoch_DICE += batch_DICE
 
@@ -122,7 +129,7 @@ for label_num, label in enumerate(train_dataset.labels):
     axs[0, label_num].set_ylabel('')
 
     # --- Histogram of predicted masks --- #
-    pred_masks = pred_normald[:, label_num, :, :].flatten()
+    pred_masks = pred_np_converted[:, label_num, :, :].flatten()
     sns.histplot(pred_masks, ax=axs[1, label_num], stat='density',
                  binwidth=0.02)
     axs[1, label_num].set_yticks([])
@@ -149,7 +156,7 @@ plt.show()
 img_num = np.random.randint(0, batch_sz)
 img_PCA = X_test.cpu().numpy()[img_num, 0, :, :]
 img_mask = test_truth[img_num, :, :, :]
-img_pred = pred_normald[img_num, :, :, :]
+img_pred = pred_np_converted[img_num, :, :, :]
 img_logits = pred_np[img_num, :, :, :]
 
 # --- Setting up axes --- #
