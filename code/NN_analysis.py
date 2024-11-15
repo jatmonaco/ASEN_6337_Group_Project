@@ -62,7 +62,7 @@ model = torch.jit.load(model_path)
 model.to(device)
 
 # %% evaluating the model
-thresholds = [0.18, 0.23, 0.18, 0.22]  # thresholds for raw logits, found by iterating over and selected highest avg DICE
+thresholds = [0.42, 0.18, 0.3, 0.22]  # thresholds for raw logits, found by iterating over and selected highest avg DICE
 
 # --- Loss functions and gradient descent optimizer --- #
 criterion = nn.BCELoss()                                    # Loss function for binary class data
@@ -146,7 +146,7 @@ plt.show()
 # %% Looking at logits and masks
 
 # --- Getting an image --- #
-img_num = np.random.randint(0, batch_sz)
+img_num = np.random.randint(0, data.shape[0])
 img_PCA = X_test.cpu().numpy()[img_num, 0, :, :]
 img_mask = test_truth[img_num, :, :, :]
 img_pred = pred_np_converted[img_num, :, :, :]
