@@ -32,7 +32,7 @@ import torch.nn.functional as F
 
 # %% Loading in the data
 print('Loading in the training data...')
-torch.manual_seed(0)    # Pytorch seeds
+torch.manual_seed(0)    # Pytorch seed
 
 # Opening the better df pkl located in the same directory as this file
 with open('better_df.pkl', 'rb') as f:
@@ -41,8 +41,8 @@ label_keys = label_keys.sample(int(1e3), random_state=0)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Device for data and model
 kpath = './understanding_cloud_organization'            # kaggle data path, containing the training images
-downscale_factor = 4                                # Approximate factor of decimation
-batch_sz = 32                                       # How many images to consider per batch
+downscale_factor = 4                                    # Approximate factor of decimation
+batch_sz = 32                                           # How many images to consider per batch
 train_dataset = kh.CloudDataset_PCA_scaled(label_keys,
                                            downscale_factor=downscale_factor,
                                            img_paths=f'{kpath}/train_images',

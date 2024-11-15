@@ -58,7 +58,8 @@ valid_keys = label_keys.loc[~label_keys.index.isin(training_keys.index)]    # Re
 print(f'Using {frac_training * 100:.0f}% of data for training...')
 
 # --- Setting up training data --- #
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Device for data and model
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Device for data and model
+device = 'cpu'
 batch_sz = 32                                       # How many images to consider per batch
 downscale_factor = 4                                # Approximate factor of decimation
 
@@ -134,7 +135,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)   # Gradient optimizer
 #                             lr=0.1)
 
 # --- Training --- #
-epochs = 8              # Number of training epochs
+epochs = 5              # Number of training epochs
 print(f'Training NN with {epochs} epochs...')
 
 # Losses and accuracies to plot for each epoch
@@ -224,40 +225,6 @@ for epoch in tqdm.trange(epochs, desc='Epochs: '):
 # %% --- Saving the model --- #
 model_scripted = torch.jit.script(model)  # Export to TorchScript
 model_scripted.save('model_scripted.pt')  # Save
-
-# %% Checking outputs of model for last batch ran as a gut check
-fig, axs = plt.subplots(3, 4, figsize=(7.5, 5), layout='constrained')
-
-for label_num, label in enumerate(train_dataset.labels):
-    axs[0, label_num].set_title(label)  # Setting title
-
-    # --- Histogram of raw logits --- #
-    logits_1label = pred_np[:, label_num, :, :].flatten()
-    sns.histplot(logits_1label, ax=axs[0, label_num], stat='density')
-    axs[0, label_num].set_yticks([])
-    axs[0, label_num].set_ylabel('')
-
-    # --- Histogram of predicted masks --- #
-    pred_masks = pred_normald[:, label_num, :, :].flatten()
-    sns.histplot(pred_masks, ax=axs[1, label_num], stat='density',
-                 binwidth=0.02)
-    axs[1, label_num].set_yticks([])
-    axs[1, label_num].set_ylabel('')
-
-    # --- Histogram of truth masks --- #
-    truth_masks = test_truth[:, label_num, :, :].flatten()
-    sns.histplot(truth_masks, ax=axs[2, label_num], stat='density',
-                 binwidth=0.02)
-    axs[2, label_num].set_yticks([])
-    axs[2, label_num].set_ylabel('')
-
-# Formatting plots
-axs[0, 0].set_ylabel('Raw Logits')
-axs[1, 0].set_ylabel('Predicted Masks')
-axs[2, 0].set_ylabel('Truth Masks')
-fig.suptitle('Distribution of Masks and Logits for Final Batch')
-plt.show()
-savefig('../figs/batch_hist.pdf', bbox_inches='tight', dpi=600)
 
 # %% Plotting metrics over the course of training
 fig, ax = plt.subplots(1, 1, figsize=(8, 4), layout='constrained')
