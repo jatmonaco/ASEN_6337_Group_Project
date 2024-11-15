@@ -222,8 +222,8 @@ for epoch in tqdm.trange(epochs, desc='Epochs: '):
     {epoch_DICE:.2f}.')
 
 # %% --- Saving the model --- #
-torch.save(obj=model,
-           f='cloudClassr_model_v2.pth')
+model_scripted = torch.jit.script(model)  # Export to TorchScript
+model_scripted.save('model_scripted.pt')  # Save
 
 # %% Checking outputs of model for last batch ran as a gut check
 fig, axs = plt.subplots(3, 4, figsize=(7.5, 5), layout='constrained')

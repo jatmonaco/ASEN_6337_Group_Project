@@ -32,11 +32,12 @@ import torch.nn.functional as F
 
 # %% Loading in the data
 print('Loading in the training data...')
+torch.manual_seed(0)    # Pytorch seeds
 
 # Opening the better df pkl located in the same directory as this file
 with open('better_df.pkl', 'rb') as f:
     label_keys = pickle.load(f)
-label_keys = label_keys.sample(int(1e3))
+label_keys = label_keys.sample(int(1e3), random_state=0)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Device for data and model
 kpath = './understanding_cloud_organization'            # kaggle data path, containing the training images
@@ -53,8 +54,9 @@ train_loader = DataLoader(train_dataset,
 print('Loading NN model...')
 
 # Creating an instance of the model on the target device
-model_path = './cloudClassr_model_v2.pth'
-model = torch.load(model_path, weights_only=False)
+model_path = './model_scripted.pt'
+model = torch.jit.load(model_path)
+model.to(device)
 
 # %% evaluating the model
 
@@ -68,8 +70,6 @@ with torch.inference_mode():
     data_iter = tqdm.tqdm(train_loader, desc='    Valid. Batch: ',
                           postfix={"DICE": 0})
     for data, target in data_iter:
-        model.eval()    # set model to evaluation mode
-
         # Forward pass
         X_test = data
         test_pred = model(X_test)
