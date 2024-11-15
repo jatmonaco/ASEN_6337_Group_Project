@@ -58,8 +58,7 @@ valid_keys = label_keys.loc[~label_keys.index.isin(training_keys.index)]    # Re
 print(f'Using {frac_training * 100:.0f}% of data for training...')
 
 # --- Setting up training data --- #
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Device for data and model
-device = 'cpu'
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Device for data and model
 batch_sz = 32                                       # How many images to consider per batch
 downscale_factor = 4                                # Approximate factor of decimation
 

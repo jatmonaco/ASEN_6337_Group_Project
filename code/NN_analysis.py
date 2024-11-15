@@ -45,7 +45,7 @@ label_keys = label_keys.sample(N_samples, random_state=0)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Device for data and model
 kpath = './understanding_cloud_organization'            # kaggle data path, containing the training images
 downscale_factor = 4                                    # Approximate factor of decimation
-batch_sz = N_samples                                    # How many images to consider per batch
+batch_sz = 32                                           # How many images to consider per batch
 train_dataset = kh.CloudDataset_PCA_scaled(label_keys,
                                            downscale_factor=downscale_factor,
                                            img_paths=f'{kpath}/train_images',
