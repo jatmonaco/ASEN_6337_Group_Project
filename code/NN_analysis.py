@@ -61,7 +61,7 @@ model = torch.jit.load(model_path)
 model.to(device)
 
 # %% evaluating the model
-thresholds = [0.48, 0.52, 0.48, 0.43]  # thresholds for raw logits, found by iterating over and selected highest avg DICE
+thresholds = [0.18, 0.23, 0.18, 0.22]  # thresholds for raw logits, found by iterating over and selected highest avg DICE
 
 # --- Loss functions and gradient descent optimizer --- #
 criterion = nn.BCELoss()                                    # Loss function for binary class data
@@ -81,7 +81,7 @@ with torch.inference_mode():
         test_truth = target
         epoch_loss += criterion(test_pred, test_truth)
 
-        # Normalizing the predicted masks
+        # Getting the logits
         pred_np = test_pred.cpu().numpy()           # Convert raw logits to numpy array
 
         # Convert logits to mask values using thresholds
@@ -116,6 +116,7 @@ for label_num, label in enumerate(train_dataset.labels):
     # --- Histogram of raw logits --- #
     logits_1label = pred_np[:, label_num, :, :].flatten()
     sns.histplot(logits_1label, ax=axs[0, label_num], stat='density')
+    axs[0, label_num].set_yscale('log')
     axs[0, label_num].set_yticks([])
     axs[0, label_num].set_ylabel('')
 

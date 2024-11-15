@@ -127,12 +127,12 @@ model.to(device)
 
 # %% Training the model
 
+# --- Thresholds to calculate DICE --- #
+thresholds = [0.18, 0.23, 0.18, 0.22]  # thresholds for raw logits, found by iterating over and selected highest avg DICE
+
 # --- Loss functions and gradient descent optimizer --- #
-# criterion = nn.CrossEntropyLoss()                         # Loss function for multiclass data
 criterion = nn.BCELoss()                                    # Loss function for binary class data
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)   # Gradient optimizer
-# optimizer = torch.optim.SGD(params=model.parameters(),
-#                             lr=0.1)
 
 # --- Training --- #
 epochs = 5              # Number of training epochs
@@ -191,22 +191,18 @@ for epoch in tqdm.trange(epochs, desc='Epochs: '):
             test_truth = target
             epoch_loss += criterion(test_pred, test_truth)
 
-            # Normalizing the predicted masks
+            # Getting the logits
             pred_np = test_pred.cpu().numpy()           # Convert raw logits to numpy array
-            pred_maxs = np.max(pred_np, axis=(2, 3),    # Max of each max for each image
-                               keepdims=True)
-            pred_mins = np.min(pred_np, axis=(2, 3),    # min of each max for each image
-                               keepdims=True)
-            # If any max's are 0 (no labeled data for that labal and image), then max should be set to 1 to avoid divide by 0
-            pred_maxs = np.where(pred_maxs == 0, 1, pred_maxs)
-            pred_normald = (pred_np - pred_mins) / (pred_maxs - pred_mins)  # Normalizing between 0 and 1
-            pred_normald = np.round(pred_normald)                           # Rounding to get predicted masks
 
+            # Convert logits to mask values using thresholds
+            pred_np_converted = np.copy(pred_np)
+            for classnum, threshold in enumerate(thresholds):
+                pred_np_converted[:, classnum, :, :] = np.where(pred_np_converted[:, classnum, :, :] > threshold, 1, 0)
             test_truth = test_truth.cpu().numpy()       # Convert truth to numpy array
 
             # Calculate DICE score
             batch_DICE = kh.dice(test_truth,
-                                 pred_normald)
+                                 pred_np_converted)
             data_iter.set_postfix({"DICE": batch_DICE})
             epoch_DICE += batch_DICE
 
