@@ -129,7 +129,7 @@ model.to(device)
 # %% Training the model
 
 # --- Thresholds to calculate DICE --- #
-thresholds = [0.14, 0.23, 0.18, 0.22]  # thresholds for raw logits, found by iterating over and selected highest avg DICE
+thresholds = [0.14, 0.13, 0.14, 0.12]  # thresholds for raw logits, found by iterating over and selected highest avg DICE
 
 # --- Loss functions and gradient descent optimizer --- #
 criterion = nn.BCELoss()                                    # Loss function for binary class data
