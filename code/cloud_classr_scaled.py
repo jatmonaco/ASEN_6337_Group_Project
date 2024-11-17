@@ -28,6 +28,7 @@ plt.rcParams['font.serif'] = 'cm'
 import seaborn as sns
 from matplotlib.pyplot import savefig
 
+descriptor = '_maxAvgPool'
 # %% Loading in the image data
 print('Loading in the training data...')
 
@@ -106,7 +107,8 @@ class CloudClassr(nn.Module):
         x1 = F.relu(self.enc1(x))
         x2 = F.max_pool2d(x1, 2)  # Down by factor of 2
         x2 = F.relu(self.enc2(x2))
-        x3 = F.max_pool2d(x2, 2)  # Down by factor of 2
+        # x3 = F.max_pool2d(x2, 2)  # Down by factor of 2
+        x3 = F.avg_pool2d(x2, 2)  # Down by factor of 2
         x3 = F.relu(self.enc3(x3))
 
         # Decoding (Upsampling)
@@ -219,7 +221,7 @@ for epoch in tqdm.trange(epochs, desc='Epochs: '):
 
 # %% --- Saving the model --- #
 model_scripted = torch.jit.script(model)  # Export to TorchScript
-model_scripted.save('model_scripted.pt')  # Save
+model_scripted.save(f'model{descriptor}.pt')  # Save
 
 # %% Plotting metrics over the course of training
 fig, ax = plt.subplots(1, 1, figsize=(8, 4), layout='constrained')
@@ -241,4 +243,4 @@ ax_DICE.tick_params(axis='y', color='r')
 
 # Formatting
 plt.show()
-savefig('../figs/training_progression.pdf', bbox_inches='tight', dpi=600)
+savefig(f'../figs/training_progression{descriptor}.pdf', bbox_inches='tight', dpi=600)
