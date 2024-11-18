@@ -28,7 +28,7 @@ plt.rcParams['font.serif'] = 'cm'
 import seaborn as sns
 from matplotlib.pyplot import savefig
 
-descriptor = 'AvgAvgPool'
+descriptor = '_expensive'
 # %% Loading in the image data
 print('Loading in the training data...')
 
@@ -93,36 +93,47 @@ class CloudClassr(nn.Module):
         super(CloudClassr, self).__init__()
 
         # Encoder: Downsampling with convolutions and max-pooling
-        self.enc0 = nn.Conv2d(1, 8, kernel_size=3, padding=1)
-        self.enc1 = nn.Conv2d(8, 16, kernel_size=3, padding=1)
-        self.enc2 = nn.Conv2d(16, 32, kernel_size=3, padding=1)
-        self.enc3 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
+        self.enc64 = nn.Conv2d(1, 64, kernel_size=3, padding=1)
+        self.enc128 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
+        self.enc256 = nn.Conv2d(128, 256, kernel_size=3, padding=1)
+        self.enc512 = nn.Conv2d(256, 512, kernel_size=3, padding=1)
+        self.enc1024 = nn.Conv2d(512, 1024, kernel_size=3, padding=1)
 
         # Decoder: Upsampling with transposed convolutions
-        self.up1 = nn.ConvTranspose2d(64, 32, kernel_size=2, stride=2)
-        self.up2 = nn.ConvTranspose2d(32, 16, kernel_size=2, stride=2)
-        self.up3 = nn.Conv2d(16, 4, kernel_size=1)  # Output layer for binary mask
-        self.final_conv = nn.Conv2d(8, 4, kernel_size=1)  # Output layer for binary mask
+        self.up512 = nn.ConvTranspose2d(1024, 512, kernel_size=2, stride=2)
+        self.up256 = nn.ConvTranspose2d(512, 256, kernel_size=2, stride=2)
+        self.up128 = nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2)
+        self.up64 = nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2)
+        self.up4 = nn.ConvTranspose2d(64, 4, kernel_size=2, stride=2)
+        self.final_conv = nn.Conv2d(16, 4, kernel_size=1)  # Output layer for binary mask
 
     def forward(self, x):
         # Encoding (Downsampling)
-        x1 = F.relu(self.enc1(x))
-        # x2 = F.max_pool2d(x1, 2)  # Down by factor of 2
-        x2 = F.avg_pool2d(x1, 2)  # Down by factor of 2
-        x2 = F.relu(self.enc2(x2))
-        # x3 = F.max_pool2d(x2, 2)  # Down by factor of 2
-        x3 = F.avg_pool2d(x2, 2)  # Down by factor of 2
-        x3 = F.relu(self.enc3(x3))
+        x64 = F.relu(self.enc64(x))
+        x64 = F.max_pool2d(x64, 2)  # Down by factor of 2
+        x128 = F.relu(self.enc128(x64))
+        x128 = F.avg_pool2d(x128, 2)  # Down by factor of 2
+        x256 = F.relu(self.enc256(x128))
+        x256 = F.avg_pool2d(x256, 2)  # Down by factor of 2
+        x512 = F.relu(self.enc512(x256))
+        x512 = F.avg_pool2d(x512, 2)  # Down by factor of 2
+        x1024 = F.relu(self.enc1024(x512))
 
         # Decoding (Upsampling)
-        x = self.up1(x3)          # Up to 700x1050
-        x = F.relu(x + x2)        # Skip connection from encoder
-        x = self.up2(x)           # Up to 1400x2100
-        x = F.relu(x + x1)        # Skip connection from encoder
+        y512 = self.up512(x1024)          # Up to 700x1050
+        y512 = F.relu(y512 + x512)        # Skip connection from encoder
+        y256 = self.up256(y512)           # Up to 1400x2100
+        y256 = F.relu(y256 + x256)        # Skip connection from encoder
+        y128 = self.up128(y256)
+        y128 = F.relu(y128 + x128)        # Skip connection from encoder
+        y64 = self.up64(y128)
+        y64 = F.relu(y64 + x64)        # Skip connection from encoder
+        y4 = self.up16(y64)
+        y4 = F.relu(y4)        # Skip connection from encoder
 
         # Final 1x1 convolution to get binary segmentation output
-        x = torch.sigmoid(self.final_conv(x))
-        return x.squeeze()
+        y = torch.sigmoid(self.final_conv(y4))
+        return y.squeeze()
 
 
 # Creating an instance of the model on the target device

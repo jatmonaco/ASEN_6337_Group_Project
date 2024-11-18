@@ -5,6 +5,8 @@ code/hw3_data/*
 code/better_df.csv
 code/*.pkl
 code/*.pth
+figs/*
+
 ## Core latex/pdflatex auxiliary files:
 *.aux
 *.lof
