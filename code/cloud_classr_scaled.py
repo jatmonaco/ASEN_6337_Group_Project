@@ -28,7 +28,7 @@ plt.rcParams['font.serif'] = 'cm'
 import seaborn as sns
 from matplotlib.pyplot import savefig
 
-descriptor = '_maxAvgPool'
+descriptor = 'AvgAvgPool'
 # %% Loading in the image data
 print('Loading in the training data...')
 
@@ -93,19 +93,22 @@ class CloudClassr(nn.Module):
         super(CloudClassr, self).__init__()
 
         # Encoder: Downsampling with convolutions and max-pooling
-        self.enc1 = nn.Conv2d(1, 16, kernel_size=3, padding=1)
+        self.enc0 = nn.Conv2d(1, 8, kernel_size=3, padding=1)
+        self.enc1 = nn.Conv2d(8, 16, kernel_size=3, padding=1)
         self.enc2 = nn.Conv2d(16, 32, kernel_size=3, padding=1)
         self.enc3 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
 
         # Decoder: Upsampling with transposed convolutions
         self.up1 = nn.ConvTranspose2d(64, 32, kernel_size=2, stride=2)
         self.up2 = nn.ConvTranspose2d(32, 16, kernel_size=2, stride=2)
-        self.final_conv = nn.Conv2d(16, 4, kernel_size=1)  # Output layer for binary mask
+        self.up3 = nn.Conv2d(16, 4, kernel_size=1)  # Output layer for binary mask
+        self.final_conv = nn.Conv2d(8, 4, kernel_size=1)  # Output layer for binary mask
 
     def forward(self, x):
         # Encoding (Downsampling)
         x1 = F.relu(self.enc1(x))
-        x2 = F.max_pool2d(x1, 2)  # Down by factor of 2
+        # x2 = F.max_pool2d(x1, 2)  # Down by factor of 2
+        x2 = F.avg_pool2d(x1, 2)  # Down by factor of 2
         x2 = F.relu(self.enc2(x2))
         # x3 = F.max_pool2d(x2, 2)  # Down by factor of 2
         x3 = F.avg_pool2d(x2, 2)  # Down by factor of 2
